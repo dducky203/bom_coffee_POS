@@ -133,7 +133,7 @@ export const OrderProvider = ({ children }) => {
         return table;
       }),
     );
-    showToast("✅ Đã thêm món vào order!", "success");
+    showToast("Đã thêm món vào order!", "success");
   };
 
   const updateOrderItem = (tableId, orderId, updates) => {
@@ -150,7 +150,7 @@ export const OrderProvider = ({ children }) => {
         return table;
       }),
     );
-    showToast("✏️ Đã cập nhật món!", "info");
+    showToast("Đã cập nhật món!", "info");
   };
 
   const removeOrderItem = (tableId, orderId) => {
@@ -169,7 +169,7 @@ export const OrderProvider = ({ children }) => {
         return table;
       }),
     );
-    showToast("🗑️ Đã xóa món!", "warning");
+    showToast("Đã xóa món!", "warning");
   };
 
   const calculateTotal = (tableId) => {
@@ -219,7 +219,7 @@ export const OrderProvider = ({ children }) => {
           : table,
       ),
     );
-    showToast("🎱 Bắt đầu tính giờ!", "success");
+    showToast("Bắt đầu tính giờ!", "success");
   };
 
   // Dừng tính giờ cho bàn bi-a
@@ -235,7 +235,7 @@ export const OrderProvider = ({ children }) => {
           : table,
       ),
     );
-    showToast("⏸️ Dừng tính giờ!", "info");
+    showToast("Dừng tính giờ!", "info");
   };
 
   const updateDiscount = (tableId, discount, discountType) => {
@@ -300,7 +300,7 @@ export const OrderProvider = ({ children }) => {
           : table,
       ),
     );
-    showToast("💰 Thanh toán thành công!", "success");
+    showToast("Thanh toán thành công!", "success");
   };
 
   const toggleDarkMode = () => {
