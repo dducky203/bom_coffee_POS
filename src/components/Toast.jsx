@@ -13,7 +13,7 @@ const Toast = () => {
   };
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 animate-slide-in">
+    <div className="fixed top-6 right-6 z-50 animate-slide-in">
       <div
         className={`${bgColors[toast.type]} text-white px-6 py-4 rounded-lg shadow-2xl flex items-center gap-3 min-w-[300px]`}
       >
