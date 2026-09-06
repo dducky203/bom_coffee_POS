@@ -9,7 +9,7 @@ import { formatCurrency } from '../../shared/lib/utils'
 import { Button } from '../../shared/components/Button'
 import { Card, CardContent } from '../../shared/components/Card'
 import { Badge } from '../../shared/components/Badge'
-import { ChevronLeft, Plus, Minus, Trash2, ShoppingBag } from 'lucide-react'
+import { ChevronLeft, Plus, Minus, Trash2, ShoppingBag, X } from 'lucide-react'
 import QRCode from 'react-qr-code'
 
 const PAYMENT_METHODS = [
@@ -40,6 +40,7 @@ export function OrderPage() {
   const [paymentMethod, setPaymentMethod] = useState('CASH')
   const [payTiming, setPayTiming] = useState('AFTER')
   const [selectedProduct, setSelectedProduct] = useState(null)
+  const [isCartOpen, setIsCartOpen] = useState(false)
 
   const cart = useCartStore(state => state.items)
   const addItem = useCartStore(state => state.addItem)
@@ -201,9 +202,9 @@ export function OrderPage() {
   }
 
   return (
-    <div className="h-[calc(100vh-4rem)] flex gap-6 overflow-hidden">
-      <div className="flex-1 flex flex-col h-full overflow-hidden">
-        <div className="flex items-center gap-4 mb-6 shrink-0">
+    <div className="h-[calc(100dvh-4rem)] md:h-[calc(100dvh-5rem)] flex overflow-hidden relative">
+      <div className="flex-1 flex flex-col h-full overflow-hidden w-full">
+        <div className="flex items-center gap-4 mb-6 shrink-0 pt-2 lg:pt-0">
           <button
             onClick={() => navigate('/')}
             className="p-2 hover:bg-brand-100 rounded-lg text-brand-600 transition-colors"
@@ -255,11 +256,45 @@ export function OrderPage() {
             ))}
           </div>
         </div>
+
+        {/* Mobile View Cart Button */}
+        <div className="lg:hidden p-4 bg-brand-50 dark:bg-brand-900 border-t border-brand-200 dark:border-brand-800 shrink-0 pb-6">
+          <Button 
+            className="w-full h-14 flex justify-between items-center px-4 rounded-xl shadow-lg"
+            onClick={() => setIsCartOpen(true)}
+          >
+            <div className="flex items-center gap-2">
+              <ShoppingBag size={24} />
+              <span className="font-semibold text-lg">{cart.length} món</span>
+            </div>
+            <span className="font-bold text-lg">{formatCurrency(totalAmount)}</span>
+          </Button>
+        </div>
       </div>
 
-      <div className="w-80 lg:w-96 bg-white dark:bg-brand-800 rounded-xl border border-brand-200 dark:border-brand-700 flex flex-col h-full shadow-sm shrink-0 overflow-hidden">
-        <div className="p-4 border-b border-brand-100 dark:border-brand-700 bg-brand-50/50 flex flex-col gap-3">
-          <div className="flex items-center gap-2">
+      {/* Cart Drawer Overlay on Mobile */}
+      {isCartOpen && (
+        <div 
+          className="lg:hidden fixed inset-0 bg-black/60 z-40 backdrop-blur-sm transition-opacity"
+          onClick={() => setIsCartOpen(false)}
+        />
+      )}
+
+      {/* Cart Container */}
+      <div className={`
+        fixed inset-y-0 right-0 z-50 w-full sm:w-[400px] bg-white dark:bg-brand-800 flex flex-col shadow-2xl transition-transform duration-300 transform 
+        lg:relative lg:translate-x-0 lg:w-96 lg:shadow-none lg:z-auto lg:rounded-xl lg:border lg:border-brand-200 lg:dark:border-brand-700 lg:ml-6
+        ${isCartOpen ? 'translate-x-0' : 'translate-x-full'}
+      `}>
+        <div className="p-4 border-b border-brand-100 dark:border-brand-700 bg-brand-50/50 flex flex-col gap-3 relative pt-safe">
+          <button 
+            className="lg:hidden absolute top-4 right-4 p-2 bg-white rounded-full shadow-sm text-brand-500 hover:text-brand-900"
+            onClick={() => setIsCartOpen(false)}
+          >
+            <X size={20} />
+          </button>
+          
+          <div className="flex items-center gap-2 pr-10 lg:pr-0">
             <ShoppingBag className="text-brand-600" />
             <h2 className="font-bold text-lg">Giỏ hàng</h2>
             <Badge className="ml-auto bg-brand-600 text-white">{cart.length}</Badge>

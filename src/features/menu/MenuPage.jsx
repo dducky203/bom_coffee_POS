@@ -262,43 +262,45 @@ export function MenuPage() {
 
       <div className="bg-white rounded-xl border border-brand-200 overflow-hidden">
         <div className="px-4 py-3 border-b border-brand-100 font-semibold">Topping (thêm tiền khi chọn)</div>
-        <table className="w-full text-sm">
-          <thead className="bg-brand-50 text-brand-600">
-            <tr>
-              <th className="text-left font-medium px-4 py-3">Tên</th>
-              <th className="text-right font-medium px-4 py-3">Giá thêm</th>
-              <th className="text-left font-medium px-4 py-3">Mặc định</th>
-              <th className="px-4 py-3" />
-            </tr>
-          </thead>
-          <tbody>
-            {toppings.map(topping => (
-              <tr key={topping.id} className="border-t border-brand-100">
-                <td className="px-4 py-3 font-medium">{topping.name}</td>
-                <td className="px-4 py-3 text-right">{Number(topping.extraPrice) > 0 ? formatCurrency(topping.extraPrice) : 'Free'}</td>
-                <td className="px-4 py-3">{topping.defaultTopping ? 'Có' : 'Không'}</td>
-                <td className="px-4 py-3 text-right">
-                  <button className="p-2 text-brand-600 hover:bg-brand-50 rounded-lg" onClick={() => {
-                    setError('')
-                    setToppingForm({
-                      id: topping.id,
-                      name: topping.name,
-                      extraPrice: topping.extraPrice,
-                      defaultTopping: topping.defaultTopping,
-                      active: topping.active,
-                      sortOrder: topping.sortOrder || 0,
-                    })
-                  }}>
-                    <Pencil size={16} />
-                  </button>
-                  <button className="p-2 text-red-500 hover:bg-red-50 rounded-lg" onClick={() => { if (confirm(`Ẩn topping "${topping.name}"?`)) deleteTopping.mutate(topping.id) }}>
-                    <Trash2 size={16} />
-                  </button>
-                </td>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-brand-50 text-brand-600">
+              <tr>
+                <th className="text-left font-medium px-4 py-3">Tên</th>
+                <th className="text-right font-medium px-4 py-3">Giá thêm</th>
+                <th className="text-left font-medium px-4 py-3">Mặc định</th>
+                <th className="px-4 py-3" />
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {toppings.map(topping => (
+                <tr key={topping.id} className="border-t border-brand-100">
+                  <td className="px-4 py-3 font-medium">{topping.name}</td>
+                  <td className="px-4 py-3 text-right">{Number(topping.extraPrice) > 0 ? formatCurrency(topping.extraPrice) : 'Free'}</td>
+                  <td className="px-4 py-3">{topping.defaultTopping ? 'Có' : 'Không'}</td>
+                  <td className="px-4 py-3 text-right whitespace-nowrap">
+                    <button className="p-2 text-brand-600 hover:bg-brand-50 rounded-lg" onClick={() => {
+                      setError('')
+                      setToppingForm({
+                        id: topping.id,
+                        name: topping.name,
+                        extraPrice: topping.extraPrice,
+                        defaultTopping: topping.defaultTopping,
+                        active: topping.active,
+                        sortOrder: topping.sortOrder || 0,
+                      })
+                    }}>
+                      <Pencil size={16} />
+                    </button>
+                    <button className="p-2 text-red-500 hover:bg-red-50 rounded-lg" onClick={() => { if (confirm(`Ẩn topping "${topping.name}"?`)) deleteTopping.mutate(topping.id) }}>
+                      <Trash2 size={16} />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <Modal isOpen={Boolean(productForm)} onClose={() => setProductForm(null)} title={productForm?.id ? 'Sửa món nước' : 'Thêm món nước'}>

@@ -49,7 +49,7 @@ export function KdsPage() {
     })
 
     return (
-      <div className="flex flex-col bg-brand-50/50 dark:bg-brand-900/50 rounded-xl p-4 min-h-[500px]">
+      <div className="flex flex-col bg-brand-50/50 dark:bg-brand-900/50 rounded-xl p-4 min-h-[300px] md:min-h-[500px]">
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-bold text-lg text-brand-900 dark:text-brand-50 flex items-center gap-2">
             <Icon className={colorClass} size={20} />
@@ -81,7 +81,7 @@ export function KdsPage() {
                     <button
                       onClick={() => updateGroupStatus.mutate({ itemsToUpdate: group.items, status: 'IN_PROGRESS' })}
                       disabled={updateGroupStatus.isPending}
-                      className="w-full justify-center text-blue-600 bg-blue-50 hover:bg-blue-100 px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-colors disabled:opacity-50"
+                      className="w-full justify-center text-blue-600 bg-blue-50 hover:bg-blue-100 px-4 py-3 md:py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-colors disabled:opacity-50"
                     >
                       <PlayCircle size={18} /> Bắt đầu làm ({group.items.length} món)
                     </button>
@@ -90,7 +90,7 @@ export function KdsPage() {
                     <button
                       onClick={() => updateGroupStatus.mutate({ itemsToUpdate: group.items, status: 'DONE' })}
                       disabled={updateGroupStatus.isPending}
-                      className="w-full justify-center text-green-600 bg-green-50 hover:bg-green-100 px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-colors disabled:opacity-50"
+                      className="w-full justify-center text-green-600 bg-green-50 hover:bg-green-100 px-4 py-3 md:py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-colors disabled:opacity-50"
                     >
                       <CheckCircle2 size={18} /> Hoàn thành ({group.items.length} món)
                     </button>
