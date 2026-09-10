@@ -6,7 +6,8 @@ import { drinkAmountOf, drinkCountOf, durationSecondsBetween, finishedBilliardSe
 import { Button } from '../../shared/components/Button'
 import { Card, CardContent } from '../../shared/components/Card'
 import { Badge } from '../../shared/components/Badge'
-import { ChevronLeft, Clock, User, MapPin, CreditCard } from 'lucide-react'
+import { ChevronLeft, Clock, User, MapPin, CreditCard, Printer } from 'lucide-react'
+import { InvoicePrint } from '../order/InvoicePrint'
 import { format } from 'date-fns'
 import { vi } from 'date-fns/locale'
 
@@ -68,24 +69,38 @@ export function OrderDetailPage() {
   const drinksCount = drinkCountOf(order)
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto">
-      {/* Header */}
-      <div className="flex items-center gap-4">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => navigate('/history')}
-          className="gap-2"
-        >
-          <ChevronLeft size={18} />
-          Quay lại
-        </Button>
-        <div className="flex-1">
-          <h1 className="text-2xl font-bold text-brand-900">Chi tiết đơn hàng #{order.id}</h1>
-          <p className="text-brand-500">{orderContentSummary(order)}</p>
+    <>
+      <div className="space-y-6 max-w-5xl mx-auto print-hidden">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-4 flex-1">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate('/history')}
+              className="gap-2 shrink-0"
+            >
+              <ChevronLeft size={18} />
+              Quay lại
+            </Button>
+            <div className="flex-1 min-w-0">
+              <h1 className="text-2xl font-bold text-brand-900 truncate">Chi tiết đơn hàng #{order.id}</h1>
+              <p className="text-brand-500 text-sm truncate">{orderContentSummary(order)}</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2.5 shrink-0">
+            <Badge className={`${orderStatusColor} text-base px-3.5 py-1.5`}>{orderStatus}</Badge>
+            <Button
+              onClick={() => window.print()}
+              className="gap-2 bg-gradient-to-r from-brand-600 to-brand-700 hover:from-brand-700 hover:to-brand-800 text-white font-bold shadow-md shadow-brand-700/20 active:scale-95 transition-all text-sm h-10 px-4"
+              title="In hóa đơn đơn hàng này"
+            >
+              <Printer size={17} />
+              <span>Xuất hóa đơn</span>
+            </Button>
+          </div>
         </div>
-        <Badge className={`${orderStatusColor} text-lg px-4 py-2`}>{orderStatus}</Badge>
-      </div>
 
       {/* Order Info */}
       <Card>
@@ -235,9 +250,19 @@ export function OrderDetailPage() {
                 <span className="font-semibold">-{formatCurrency(order.discountAmount)}</span>
               </div>
             )}
-            <div className="flex justify-between text-xl font-bold text-brand-900 pt-3 border-t border-brand-200">
-              <span>Tổng thanh toán</span>
-              <span>{formatCurrency(order.finalAmount)}</span>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-4 border-t border-brand-200">
+              <div className="flex items-baseline gap-3">
+                <span className="text-xl font-bold text-brand-900">Tổng thanh toán:</span>
+                <span className="text-2xl font-black text-brand-900">{formatCurrency(order.finalAmount)}</span>
+              </div>
+              <Button
+                variant="outline"
+                onClick={() => window.print()}
+                className="gap-2 border-brand-300 dark:border-brand-600 font-bold hover:bg-brand-50 shadow-sm self-start sm:self-auto"
+              >
+                <Printer size={16} />
+                <span>Xuất hóa đơn</span>
+              </Button>
             </div>
           </div>
         </CardContent>
@@ -261,5 +286,17 @@ export function OrderDetailPage() {
         </Card>
       )}
     </div>
+
+    <InvoicePrint
+      table={order.table}
+      customerName={order.customerName}
+      orderItems={order.items || []}
+      billiardSessions={billiardSessions}
+      totalAmount={order.finalAmount || order.totalAmount || 0}
+      discountAmount={order.discountAmount || 0}
+      orderDate={order.closedAt || order.createdAt}
+      orderId={order.id}
+    />
+  </>
   )
 }

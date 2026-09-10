@@ -50,7 +50,7 @@ export const router = createBrowserRouter([
       {
         path: 'kds',
         element: (
-          <ProtectedRoute allowedRoles={['ADMIN', 'BARTENDER']}>
+          <ProtectedRoute allowedRoles={['ADMIN', 'BARTENDER', 'WAITER', 'CASHIER']}>
             <KdsPage />
           </ProtectedRoute>
         )

@@ -54,7 +54,7 @@ export function Layout() {
       title: 'BÁN HÀNG & PHỤC VỤ',
       items: [
         { path: '/', label: 'Sơ đồ bàn', icon: LayoutGrid, roles: ['ADMIN', 'WAITER', 'CASHIER'] },
-        { path: '/kds', label: 'Pha chế (KDS)', icon: Coffee, roles: ['ADMIN', 'BARTENDER'] },
+        { path: '/kds', label: 'Pha chế (KDS)', icon: Coffee, roles: ['ADMIN', 'BARTENDER', 'WAITER', 'CASHIER'] },
         { path: '/billiard', label: 'Giờ Bi-a', icon: Clock, roles: ['ADMIN', 'WAITER', 'CASHIER'] },
         { path: '/history', label: 'Lịch sử đơn', icon: FileText, roles: ['ADMIN', 'CASHIER'] },
       ]
@@ -87,7 +87,7 @@ export function Layout() {
   return (
     <div className="flex flex-col md:flex-row h-[100dvh] bg-brand-50/70 dark:bg-brand-900 transition-colors selection:bg-accent selection:text-white">
       {/* Mobile Top Header */}
-      <header className="md:hidden h-14 bg-white/90 dark:bg-brand-900/90 backdrop-blur-md border-b border-brand-200/60 dark:border-brand-800 flex items-center justify-between px-4 shrink-0 z-40 shadow-sm">
+      <header className="md:hidden h-14 bg-white/90 dark:bg-brand-900/90 backdrop-blur-md border-b border-brand-200/60 dark:border-brand-800 flex items-center justify-between px-4 shrink-0 z-40 shadow-sm print-hidden">
         <div className="flex items-center gap-2.5">
           <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-brand-600 via-brand-700 to-amber-800 flex items-center justify-center text-white font-black shadow-md shadow-brand-700/20">
             <Coffee size={18} />
@@ -120,7 +120,7 @@ export function Layout() {
       </header>
 
       {/* Sidebar (Desktop) & Bottom Navigation Bar (Mobile) */}
-      <aside className="order-last md:order-first h-[68px] md:h-auto md:w-20 lg:w-64 w-full bg-white/90 dark:bg-brand-900/95 backdrop-blur-xl border-t md:border-t-0 md:border-r border-brand-200/60 dark:border-brand-800/80 flex md:flex-col items-center md:items-stretch justify-between py-1 md:py-5 px-2 md:px-3 transition-all shrink-0 z-50 shadow-lg md:shadow-none">
+      <aside className="order-last md:order-first h-[68px] md:h-auto md:w-20 lg:w-64 w-full bg-white/90 dark:bg-brand-900/95 backdrop-blur-xl border-t md:border-t-0 md:border-r border-brand-200/60 dark:border-brand-800/80 flex md:flex-col items-center md:items-stretch justify-between py-1 md:py-5 px-2 md:px-3 transition-all shrink-0 z-50 shadow-lg md:shadow-none print-hidden">
         
         {/* Desktop Brand Logo Header */}
         <div className="hidden md:flex items-center justify-center lg:justify-start lg:px-3 mb-6 shrink-0">

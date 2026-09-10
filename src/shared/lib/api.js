@@ -16,7 +16,7 @@ export function setToken(token) {
 }
 
 export const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || '/api/v1',
+  baseURL: import.meta.env.VITE_API_URL || 'https://bom-coffee-pos.onrender.com/api/v1',
 })
 
 api.interceptors.request.use((config) => {
@@ -38,7 +38,7 @@ api.interceptors.response.use(
         toast.error(err.message)
         throw err
       }
-      
+
       // Auto show success toast for non-GET requests if backend provides a message
       if (res.config.method !== 'get' && body.message) {
         toast.success(body.message)
@@ -58,7 +58,7 @@ api.interceptors.response.use(
     const err = new Error(message)
     err.code = body?.errorCode
     err.status = error.response?.status
-    
+
     // Only show error toast if it's not a 401 redirecting to login (to avoid double noise)
     if (err.status !== 401 || window.location.pathname !== '/login') {
       toast.error(message)
