@@ -1,4 +1,4 @@
-import { getToken } from './api'
+import { api, getToken } from './api'
 
 const SOUND_STORAGE_KEY = 'kds_sound_enabled'
 const ALERT_MP3 = '/sounds/tinhtinh.mp3'
@@ -128,14 +128,10 @@ function wait(ms) {
 }
 
 async function speakWithGoogle(text) {
-  const token = getToken()
-  const res = await fetch(`/api/v1/tts?text=${encodeURIComponent(text)}`, {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  const blob = await api.get('/tts', {
+    params: { text },
+    responseType: 'blob'
   })
-  if (!res.ok) {
-    throw new Error('tts-failed')
-  }
-  const blob = await res.blob()
   if (!blob || blob.size < 100) {
     throw new Error('tts-empty')
   }

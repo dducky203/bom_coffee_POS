@@ -29,6 +29,7 @@ export const useAuthStore = create((set) => ({
   },
   logout: () => {
     setToken(null)
+    localStorage.removeItem('bom_token')
     localStorage.removeItem(USER_KEY)
     set({ user: null })
   },

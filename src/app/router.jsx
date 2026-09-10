@@ -1,6 +1,8 @@
-import { createBrowserRouter } from 'react-router-dom'
+import { createBrowserRouter, Navigate } from 'react-router-dom'
 import { Layout } from './Layout'
 import { LoginPage } from '../features/auth/LoginPage'
+import { ForbiddenPage } from '../features/auth/ForbiddenPage'
+import { ProtectedRoute } from '../features/auth/ProtectedRoute'
 import { TableMapPage } from '../features/order/TableMapPage'
 import { OrderPage } from '../features/order/OrderPage'
 import { KdsPage } from '../features/kds/KdsPage'
@@ -19,47 +21,99 @@ export const router = createBrowserRouter([
   },
   {
     path: '/',
-    element: <Layout />,
+    element: (
+      <ProtectedRoute>
+        <Layout />
+      </ProtectedRoute>
+    ),
     children: [
       {
+        path: '403',
+        element: <ForbiddenPage />
+      },
+      {
         index: true,
-        element: <TableMapPage />
+        element: (
+          <ProtectedRoute allowedRoles={['ADMIN', 'WAITER', 'CASHIER']}>
+            <TableMapPage />
+          </ProtectedRoute>
+        )
       },
       {
         path: 'order/:tableId',
-        element: <OrderPage />
+        element: (
+          <ProtectedRoute allowedRoles={['ADMIN', 'WAITER', 'CASHIER']}>
+            <OrderPage />
+          </ProtectedRoute>
+        )
       },
       {
         path: 'kds',
-        element: <KdsPage />
+        element: (
+          <ProtectedRoute allowedRoles={['ADMIN', 'BARTENDER']}>
+            <KdsPage />
+          </ProtectedRoute>
+        )
       },
       {
         path: 'billiard',
-        element: <BilliardPage />
+        element: (
+          <ProtectedRoute allowedRoles={['ADMIN', 'WAITER', 'CASHIER']}>
+            <BilliardPage />
+          </ProtectedRoute>
+        )
       },
       {
         path: 'dashboard',
-        element: <DashboardPage />
+        element: (
+          <ProtectedRoute allowedRoles={['ADMIN']}>
+            <DashboardPage />
+          </ProtectedRoute>
+        )
       },
       {
         path: 'menu',
-        element: <MenuPage />
+        element: (
+          <ProtectedRoute allowedRoles={['ADMIN']}>
+            <MenuPage />
+          </ProtectedRoute>
+        )
       },
       {
         path: 'pricing',
-        element: <BilliardPricingPage />
+        element: (
+          <ProtectedRoute allowedRoles={['ADMIN']}>
+            <BilliardPricingPage />
+          </ProtectedRoute>
+        )
       },
       {
         path: 'history',
-        element: <HistoryPage />
+        element: (
+          <ProtectedRoute allowedRoles={['ADMIN', 'CASHIER']}>
+            <HistoryPage />
+          </ProtectedRoute>
+        )
       },
       {
         path: 'history/:id',
-        element: <OrderDetailPage />
+        element: (
+          <ProtectedRoute allowedRoles={['ADMIN', 'CASHIER']}>
+            <OrderDetailPage />
+          </ProtectedRoute>
+        )
       },
       {
         path: 'staff',
-        element: <StaffPage />
+        element: (
+          <ProtectedRoute allowedRoles={['ADMIN']}>
+            <StaffPage />
+          </ProtectedRoute>
+        )
+      },
+      {
+        path: '*',
+        element: <Navigate to="/403" replace />
       }
     ]
   }
