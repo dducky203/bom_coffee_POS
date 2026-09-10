@@ -640,7 +640,6 @@ export function OrderPage() {
                 </div>
               </div>
             )}
-
             {cart.length === 0 ? (
               <div className="flex flex-col items-center justify-center text-brand-400 gap-4 py-8">
                 <ShoppingBag size={48} className="opacity-50" />
