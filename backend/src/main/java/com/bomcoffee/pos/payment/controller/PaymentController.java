@@ -36,6 +36,7 @@ public class PaymentController {
     public static class CheckoutRequest {
         private BigDecimal discountAmount;
         @NotNull private List<PaymentDetail> payments;
+        private String customerName;
     }
 
     @Data

@@ -2,11 +2,11 @@ import React from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useParams, useNavigate } from 'react-router-dom'
 import { historyApi } from '../../shared/lib/api'
-import { formatCurrency } from '../../shared/lib/utils'
+import { drinkAmountOf, drinkCountOf, durationSecondsBetween, finishedBilliardSessions, formatCurrency, formatDateTime, formatPlayDuration, formatTimeOnly, orderContentSummary } from '../../shared/lib/utils'
 import { Button } from '../../shared/components/Button'
 import { Card, CardContent } from '../../shared/components/Card'
 import { Badge } from '../../shared/components/Badge'
-import { ChevronLeft, Clock, User, MapPin, DollarSign, CreditCard } from 'lucide-react'
+import { ChevronLeft, Clock, User, MapPin, CreditCard } from 'lucide-react'
 import { format } from 'date-fns'
 import { vi } from 'date-fns/locale'
 
@@ -24,11 +24,11 @@ function itemStatusLabel(status) {
 function paymentMethodLabel(method) {
   switch (method) {
     case 'CASH': return 'Tiền mặt'
-    case 'BANK_TRANSFER': return 'Chuyển khoản'
-    case 'QR': return 'QR Code'
+    case 'BANK_TRANSFER':
+    case 'QR': return 'Chuyển khoản'
     case 'CARD': return 'Thẻ'
     case 'EWALLET': return 'Ví điện tử'
-    default: return method
+    default: return method || 'Tiền mặt'
   }
 }
 
@@ -62,6 +62,10 @@ export function OrderDetailPage() {
 
   const orderStatus = order.status === 'COMPLETED' || order.status === 'PAID' ? 'Hoàn thành' : 'Đã hủy'
   const orderStatusColor = order.status === 'COMPLETED' || order.status === 'PAID' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+  const billiardSessions = finishedBilliardSessions(order)
+  const billiardAmount = billiardSessions.reduce((sum, session) => sum + Number(session.totalAmount || 0), 0)
+  const drinksAmount = drinkAmountOf(order)
+  const drinksCount = drinkCountOf(order)
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
@@ -78,7 +82,7 @@ export function OrderDetailPage() {
         </Button>
         <div className="flex-1">
           <h1 className="text-2xl font-bold text-brand-900">Chi tiết đơn hàng #{order.id}</h1>
-          <p className="text-brand-500">Xem đầy đủ thông tin đơn hàng đã xử lý</p>
+          <p className="text-brand-500">{orderContentSummary(order)}</p>
         </div>
         <Badge className={`${orderStatusColor} text-lg px-4 py-2`}>{orderStatus}</Badge>
       </div>
@@ -98,8 +102,24 @@ export function OrderDetailPage() {
             <div className="flex items-start gap-3">
               <User className="text-brand-500 mt-0.5" size={20} />
               <div>
+                <p className="text-sm text-brand-500">Chủ bàn / Khách</p>
+                <p className="font-semibold text-brand-900">{order.customerName || '—'}</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <User className="text-brand-500 mt-0.5" size={20} />
+              <div>
                 <p className="text-sm text-brand-500">Nhân viên</p>
                 <p className="font-semibold text-brand-900">{order.staff?.fullName || '-'}</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <CreditCard className="text-brand-500 mt-0.5" size={20} />
+              <div>
+                <p className="text-sm text-brand-500">Phương thức thanh toán</p>
+                <p className="font-semibold text-brand-900">
+                  {paymentMethodLabel(order.paymentMethod || (order.payments && order.payments[0]?.method))}
+                </p>
               </div>
             </div>
             <div className="flex items-start gap-3">
@@ -124,12 +144,41 @@ export function OrderDetailPage() {
         </CardContent>
       </Card>
 
+      {billiardSessions.length > 0 && (
+        <Card>
+          <CardContent className="p-6">
+            <h2 className="text-lg font-bold text-brand-900 mb-4">Giờ chơi Bi-a</h2>
+            <div className="space-y-3">
+              {billiardSessions.map((session) => {
+                const seconds = durationSecondsBetween(session.startTime, session.endTime)
+                return (
+                  <div key={session.id} className="p-4 rounded-lg border border-blue-200 bg-blue-50">
+                    <div className="flex items-center justify-between gap-3 mb-3">
+                      <p className="font-semibold text-blue-900">
+                        Phiên {session.sessionNo || session.id}
+                      </p>
+                      <p className="font-bold text-blue-900">{formatCurrency(session.totalAmount)}</p>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm text-blue-800">
+                      <p>Giờ bắt đầu: <span className="font-mono font-semibold">{formatDateTime(session.startTime)}</span></p>
+                      <p>Giờ kết thúc: <span className="font-mono font-semibold">{formatDateTime(session.endTime)}</span></p>
+                      <p>Thời gian chơi: <span className="font-semibold">{formatPlayDuration(seconds)} ({formatTimeOnly(session.startTime)} → {formatTimeOnly(session.endTime)})</span></p>
+                      <p>Tiền giờ: <span className="font-semibold">{formatCurrency(session.totalAmount)}</span></p>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Order Items */}
       <Card>
         <CardContent className="p-6">
-          <h2 className="text-lg font-bold text-brand-900 mb-4">Danh sách món</h2>
+          <h2 className="text-lg font-bold text-brand-900 mb-4">Danh sách món {drinksCount > 0 ? `(${drinksCount} nước)` : ''}</h2>
           <div className="space-y-3">
-            {order.items?.map((item) => {
+            {order.items?.length ? order.items.map((item) => {
               const itemStatus = itemStatusLabel(item.status)
               const isCancelled = item.status === 'CANCELLED'
               return (
@@ -158,7 +207,9 @@ export function OrderDetailPage() {
                   </div>
                 </div>
               )
-            })}
+            }) : (
+              <p className="text-sm text-brand-400">Không có món nước</p>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -168,9 +219,15 @@ export function OrderDetailPage() {
         <CardContent className="p-6">
           <h2 className="text-lg font-bold text-brand-900 mb-4">Thanh toán</h2>
           <div className="space-y-3">
+            {billiardAmount > 0 && (
+              <div className="flex justify-between text-brand-700">
+                <span>Tiền giờ bi-a</span>
+                <span className="font-semibold">{formatCurrency(billiardAmount)}</span>
+              </div>
+            )}
             <div className="flex justify-between text-brand-700">
-              <span>Tổng tiền món</span>
-              <span className="font-semibold">{formatCurrency(order.totalAmount)}</span>
+              <span>Tiền nước {drinksCount > 0 ? `(${drinksCount} món)` : ''}</span>
+              <span className="font-semibold">{formatCurrency(drinksAmount)}</span>
             </div>
             {order.discountAmount > 0 && (
               <div className="flex justify-between text-red-600">

@@ -99,6 +99,14 @@ export const toppingApi = {
   remove: (id) => api.delete(`/toppings/${id}`),
 }
 
+export const uploadApi = {
+  image: (file) => {
+    const form = new FormData()
+    form.append('file', file)
+    return api.post('/uploads/image', form)
+  },
+}
+
 export const productApi = {
   list: (categoryId, includeInactive = false) =>
     api.get('/products', { params: { ...(categoryId ? { categoryId } : {}), includeInactive } }),
@@ -119,14 +127,14 @@ export const orderApi = {
 }
 
 export const kdsApi = {
-  queue: () => api.get('/kds/queue'),
+  queue: (all = false) => api.get('/kds/queue', { params: all ? { all: true } : {} }),
   updateStatus: (itemId, status) => api.patch(`/kds/items/${itemId}/status`, { status }),
 }
 
 export const billiardApi = {
   current: (tableId) => api.get(`/billiard/${tableId}/current`),
   start: (tableId) => api.post(`/billiard/${tableId}/start`),
-  stop: (tableId) => api.post(`/billiard/${tableId}/stop`),
+  stop: (tableId, sessionId) => api.post(`/billiard/${tableId}/stop`, sessionId ? { sessionId } : {}),
 }
 
 export const billiardPricingApi = {
@@ -146,4 +154,14 @@ export const historyApi = {
   getOrders: (params) => api.get('/history/orders', { params }),
   getOrderDetail: (id) => api.get(`/history/orders/${id}`),
   staffs: () => api.get('/history/staffs'),
+}
+
+export const userApi = {
+  list: (params) => api.get('/users', { params }),
+  get: (id) => api.get(`/users/${id}`),
+  roles: () => api.get('/users/roles'),
+  create: (payload) => api.post('/users', payload),
+  update: (id, payload) => api.put(`/users/${id}`, payload),
+  toggleActive: (id) => api.patch(`/users/${id}/active`),
+  resetPassword: (id, newPassword) => api.patch(`/users/${id}/password`, { newPassword }),
 }

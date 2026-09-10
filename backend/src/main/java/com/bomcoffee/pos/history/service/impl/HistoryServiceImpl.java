@@ -102,7 +102,8 @@ public class HistoryServiceImpl implements HistoryService {
                 } catch (NumberFormatException ignored) {
                     predicates.add(cb.or(
                             cb.like(cb.lower(root.get("table").get("name")), "%" + keyword + "%"),
-                            cb.like(cb.lower(root.get("staff").get("fullName")), "%" + keyword + "%")
+                            cb.like(cb.lower(root.get("staff").get("fullName")), "%" + keyword + "%"),
+                            cb.like(cb.lower(cb.coalesce(root.get("customerName"), "")), "%" + keyword + "%")
                     ));
                 }
             }
@@ -119,6 +120,21 @@ public class HistoryServiceImpl implements HistoryService {
         }
         if (order.getPreviousOrder() != null) {
             order.getPreviousOrder().getId();
+        }
+        if (order.getItems() != null) {
+            for (OrderItem item : order.getItems()) {
+                if (item.getProduct() != null) {
+                    item.getProduct().getName();
+                }
+            }
+        }
+        if (order.getBilliardSessions() != null) {
+            for (var session : order.getBilliardSessions()) {
+                session.getStartTime();
+                if (session.getTable() != null) {
+                    session.getTable().getName();
+                }
+            }
         }
     }
 

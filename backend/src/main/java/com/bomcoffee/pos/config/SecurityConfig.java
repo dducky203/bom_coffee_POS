@@ -62,6 +62,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/v1/reports/**").hasRole("ADMIN")
                 .requestMatchers("/api/v1/billiard-pricing/**").hasRole("ADMIN")
                 .requestMatchers("/api/v1/users/**").hasRole("ADMIN")
+                .requestMatchers("/api/v1/uploads/**").hasRole("ADMIN")
                 // All other endpoints require authentication
                 .anyRequest().authenticated()
             )

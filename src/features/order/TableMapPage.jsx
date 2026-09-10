@@ -1,23 +1,20 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { tableApi } from '../../shared/lib/api'
+import { tablesQuery } from '../../shared/lib/queries'
 import { Coffee, MonitorPlay } from 'lucide-react'
+import { LoadingPage } from '../../shared/components/Loading'
 
 export function TableMapPage() {
   const [filter, setFilter] = useState('ALL')
   const navigate = useNavigate()
-  const { data: tables = [], isLoading, error } = useQuery({
-    queryKey: ['tables'],
-    queryFn: tableApi.list,
-    refetchInterval: 10000,
-  })
+  const { data: tables = [], isLoading, error } = useQuery(tablesQuery)
 
   const visible = tables.filter(t => filter === 'ALL' || t.type === filter)
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'EMPTY': return 'bg-gray-100 border-gray-200 text-gray-500 hover:bg-gray-200'
+      case 'EMPTY': return 'bg-gray-100 dark:bg-brand-800/40 border-gray-200 dark:border-brand-700 text-gray-500 hover:bg-gray-200 dark:hover:bg-brand-800'
       case 'SERVING': return 'bg-brand-500 border-brand-600 text-white hover:bg-brand-600 shadow-md'
       case 'RESERVED': return 'bg-yellow-500 border-yellow-600 text-white hover:bg-yellow-600 shadow-md'
       default: return 'bg-gray-100'
@@ -63,7 +60,7 @@ export function TableMapPage() {
         </div>
       </div>
 
-      {isLoading && <p className="text-brand-500">Đang tải danh sách bàn...</p>}
+      {isLoading && <LoadingPage text="Đang tải sơ đồ bàn..." />}
       {error && <p className="text-red-600">{error.message}</p>}
 
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">

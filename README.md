@@ -1,209 +1,160 @@
-# ☕ Coffee Order System - POS Frontend
+# ☕ BOM COFFEE - Hệ Thống POS & Quản Lý Quán Cà Phê & Bàn Bi-a
 
-Website Order Quán Cà Phê chuyên nghiệp với ReactJS, Vite và Tailwind CSS.
-
-## 🚀 Tính Năng
-
-### Dashboard
-
-- ✅ Hiển thị danh sách 12 bàn với trạng thái realtime
-- 🟢 **Trống** - Bàn sẵn sàng
-- 🟡 **Đang Order** - Đang có khách order
-- 🔴 **Chờ Thanh Toán** - Chờ thanh toán
-- 📊 Thống kê số lượng bàn theo từng trạng thái
-
-### Trang Order Theo Bàn
-
-**Menu (Phần A)**
-
-- 🎨 Hiển thị món dạng card với hình ảnh đẹp
-- 🔍 Tìm kiếm món theo tên
-- 🏷️ Lọc theo danh mục: Cà phê / Trà / Trà sữa / Đá xay
-- ⚙️ Modal tùy chỉnh món:
-  - Chọn số lượng
-  - Mức đường (0%, 50%, 100%)
-  - Mức đá (Không đá / Ít đá / Bình thường)
-  - Topping (nhiều lựa chọn)
-  - Ghi chú tùy chỉnh
-- ⌨️ Shortcut: Ctrl+Enter để thêm nhanh
-
-**Order List (Phần B)**
-
-- 📝 Hiển thị danh sách món đã order
-- ✏️ Sửa số lượng món
-- 🗑️ Xóa món
-- ⏳ Đánh dấu trạng thái: Đang làm / Đã ra món
-- 💰 Tính tổng tiền realtime
-
-**Payment (Phần C)**
-
-- 💵 Tự động tính tổng tiền
-- 🎁 Giảm giá theo % hoặc số tiền cố định
-- 🎯 Xác nhận thanh toán
-- 🖨️ In hóa đơn (mock)
-- 📊 Thống kê món: Tổng món / Đã hoàn thành / Đang làm
-
-### Tính Năng Nâng Cao
-
-- 🌓 **Dark Mode** - Chế độ tối bảo vệ mắt
-- 💾 **LocalStorage** - Lưu trữ order tự động
-- 🔔 **Toast Notifications** - Thông báo thân thiện
-- ✨ **Animations** - Hiệu ứng mượt mà
-- 📱 **Responsive** - Tương thích mọi thiết bị
-- 🎨 **POS Design** - Giao diện chuyên nghiệp
-
-## 🛠️ Công Nghệ
-
-- **React 18** - UI Library
-- **Vite** - Build tool siêu nhanh
-- **Tailwind CSS** - Utility-first CSS
-- **React Router** - Routing
-- **Context API** - State management
-- **LocalStorage** - Data persistence
-
-## 📦 Cài Đặt
-
-### Yêu cầu
-
-- Node.js 16+
-- npm hoặc yarn
-
-### Các bước cài đặt
-
-```bash
-# 1. Di chuyển vào thư mục project
-cd "c:\Users\ADMIN\OneDrive\Máy tính\New folder"
-
-# 2. Cài đặt dependencies
-npm install
-
-# 3. Chạy development server
-npm run dev
-
-# 4. Mở trình duyệt tại http://localhost:5173
-```
-
-### Build Production
-
-```bash
-npm run build
-npm run preview
-```
-
-## 📁 Cấu Trúc Project
-
-```
-coffee-order-system/
-├── src/
-│   ├── components/          # Các component UI
-│   │   ├── DarkModeToggle.jsx
-│   │   ├── MenuCard.jsx
-│   │   ├── MenuItemModal.jsx
-│   │   ├── OrderList.jsx
-│   │   ├── PaymentSection.jsx
-│   │   ├── TableCard.jsx
-│   │   └── Toast.jsx
-│   ├── context/             # State management
-│   │   └── OrderContext.jsx
-│   ├── data/                # Mock data
-│   │   └── menuData.js
-│   ├── pages/               # Các trang chính
-│   │   ├── Dashboard.jsx
-│   │   └── OrderPage.jsx
-│   ├── App.jsx              # Root component
-│   ├── main.jsx             # Entry point
-│   └── index.css            # Global styles
-├── index.html
-├── package.json
-├── vite.config.js
-├── tailwind.config.js
-└── postcss.config.js
-```
-
-## 🎯 Hướng Dẫn Sử Dụng
-
-### 1. Chọn Bàn
-
-- Từ Dashboard, click vào bàn bất kỳ để bắt đầu order
-
-### 2. Order Món
-
-- Tìm kiếm hoặc lọc món theo danh mục
-- Click vào món để mở modal tùy chỉnh
-- Chọn số lượng, đường, đá, topping
-- Bấm "Thêm Vào Order" hoặc nhấn Ctrl+Enter
-
-### 3. Quản Lý Order
-
-- Sửa số lượng món bằng nút ✏️
-- Xóa món bằng nút 🗑️
-- Đánh dấu món đã hoàn thành bằng icon ⏳/✅
-
-### 4. Thanh Toán
-
-- Nhập giảm giá nếu có (% hoặc VNĐ)
-- Bấm "In Hóa Đơn" để xem hóa đơn
-- Bấm "Xác Nhận Thanh Toán" để hoàn tất
-- Bàn tự động reset về trạng thái Trống
-
-### 5. Dark Mode
-
-- Click icon 🌙/☀️ ở góc trên bên phải để chuyển đổi
-
-## 🎨 Tùy Chỉnh
-
-### Thay đổi màu sắc
-
-Chỉnh sửa file `tailwind.config.js`:
-
-```js
-colors: {
-  coffee: {...},  // Màu cà phê
-  mint: {...}     // Màu mint
-}
-```
-
-### Thêm món mới
-
-Chỉnh sửa file `src/data/menuData.js`:
-
-```js
-{
-  id: 19,
-  name: 'Món Mới',
-  category: 'coffee',
-  price: 35000,
-  image: 'url-hình-ảnh',
-  description: 'Mô tả món'
-}
-```
-
-### Thay đổi số lượng bàn
-
-Chỉnh sửa trong `src/context/OrderContext.jsx`:
-
-```js
-Array.from({ length: 12 }, ...) // Đổi 12 thành số bàn mong muốn
-```
-
-## 🚀 Tính Năng Sắp Tới (Có thể mở rộng)
-
-- 📱 PWA support
-- 🖨️ Kết nối máy in hóa đơn thật
-- 👥 Quản lý nhân viên
-- 📈 Báo cáo doanh thu
-- 🔐 Xác thực người dùng
-- 🌐 Backend API integration
-- 📱 Mobile app version
-
-## 📝 License
-
-MIT License - Sử dụng tự do cho mục đích cá nhân và thương mại.
-
-## 💡 Credits
-
-Developed with ❤️ using React, Vite & Tailwind CSS
+Hệ thống quản lý bán hàng (POS - Point of Sale), theo dõi giờ chơi Bi-a, màn hình pha chế KDS (Kitchen Display System) thông minh tích hợp giọng nói tiếng Việt và báo cáo doanh thu đa chiều dành cho quán Cà phê & Câu lạc bộ Bi-a.
 
 ---
 
-**Happy Coding! ☕**
+## 🚀 Tính Năng Nổi Bật
+
+### 🖥️ 1. Sơ Đồ Bàn & Đặt Món (POS Order)
+- **Hỗ trợ 2 loại bàn**: Bàn nước (DRINK) và Bàn Bi-a (BILLIARD).
+- **Trạng thái bàn Realtime**: Trống (`EMPTY`), Đang phục vụ (`SERVING`), Đặt trước (`RESERVED`).
+- **Thanh tìm kiếm & lọc danh mục**: Lọc nhanh món ăn / nước uống theo danh mục (Cà phê, Trà, Sữa chua, Đá xay...) kèm số lượng món.
+- **Tùy chỉnh món nước (Drink Options)**:
+  - Chọn lượng đá: 0%, 30%, 50%, 70%, 100%.
+  - Chọn lượng đường: 0%, 30%, 50%, 70%, 100%.
+  - Chọn Topping đi kèm (Trân châu, Khúc bạch, Thạch...).
+  - Ghi chú riêng cho từng món.
+
+### 🎱 2. Quản Lý Giờ Chơi Bi-a & Giá Giờ (Billiard Management)
+- **Bắt đầu / Kết thúc tính giờ**: Theo dõi thời gian chơi chính xác theo từng giây.
+- **Tự động tính tiền giờ**: Áp dụng cấu hình bảng giá bi-a theo giờ/khung giờ.
+- **Hỗ trợ chơi nhiều phiên**: Lưu lịch sử các phiên chơi bi-a đã kết thúc trong cùng một đơn hàng.
+
+### 👨‍🍳 3. Màn Hình Pha Chế KDS (Kitchen Display System) & Giọng Đọc Tiếng Việt
+- **Phân loại trạng thái**: Chờ làm (`PENDING`), Đang làm (`IN_PROGRESS`), Đã xong (`DONE`).
+- **Thông báo giọng nói Tiếng Việt (Text-to-Speech)**:
+  - Tự động đọc thông báo phát ra loa khi có đơn mới: *"Có đơn mới. Bàn 1. 3 món."*
+  - Phát tiếng chuông cảnh báo Ding-Dong (Web Audio API) khi có đơn chờ.
+  - Tự động nhắc nhở định kỳ **2 phút/lần** nếu còn đơn chưa xử lý.
+- **Công tắc Bật / Tắt âm thanh**: Cho phép pha chế chủ động bật/tắt âm thanh kèm lưu cấu hình (`localStorage`).
+
+### 💳 4. Thanh Toán & Giải Phóng Bàn (Payment & Table Release)
+- **Hình thức thanh toán**: Trả trước (`BEFORE`) hoặc Trả sau (`AFTER`).
+- **Phương thức thanh toán**:
+  - Tiền mặt (`CASH`).
+  - Chuyển khoản (`BANK_TRANSFER`): Tích hợp mã **VietQR** tự động tạo theo số tiền + tên bàn & thông tin chuyển khoản ngân hàng.
+- **Tính năng Trả bàn (Set bàn trống)**: Cho phép trả bàn giải phóng về trạng thái *Trống* ngay cả khi khách trả trước hay sau khi dùng xong.
+
+### 📊 5. Báo Cáo Doanh Thu Đa Chiều (Revenue Analytics Dashboard)
+Tích hợp 5 loại biểu đồ tương tác (**Recharts**):
+- **Biểu đồ vùng (Area Chart)**: Xu hướng doanh thu theo ngày / khoảng thời gian.
+- **Biểu đồ cột Top 10 Món**: Thống kê sản phẩm bán chạy nhất.
+- **Biểu đồ tròn (Donut Chart)**: Tỷ lệ doanh thu theo phương thức thanh toán (Tiền mặt, Chuyển khoản, Thẻ).
+- **Biểu đồ cột Doanh thu Nhân viên**: Theo dõi hiệu suất bán hàng của từng nhân viên.
+- **Biểu đồ cột Cơ cấu Dịch vụ**: So sánh doanh thu tiền nước vs tiền giờ bi-a.
+
+### 📜 6. Lịch Sử Đơn Hàng & Xem Chi Tiết
+- **Bộ lọc đa năng**: Lọc từ ngày - đến ngày, lọc theo bàn, loại bàn (Cà phê/Bi-a), nhân viên, trạng thái, phương thức thanh toán, đơn gọi thêm.
+- **Chi tiết đơn hàng**: Xem lại đầy đủ các món đã gọi, tiền giờ bi-a, mã giảm giá, thời gian tạo/đóng và nhân viên phụ trách.
+
+### 📱 7. Giao Diện Responsive & Dark Mode
+- **Điều hướng Mobile thông minh**: Thanh bottom nav ưu tiên các mục vận hành chính (Sơ đồ bàn, Pha chế KDS, Lịch sử đơn) + Nút **"Khác"** mở bảng slide-up drawer cho các mục quản lý.
+- **Giao diện Tối (Dark Mode)**: Tối ưu cho mắt nhân viên làm việc ca đêm.
+
+---
+
+## 🛠️ Công Nghệ Sử Dụng
+
+### Frontend
+- **Core**: React 18, Vite.
+- **Styling**: Tailwind CSS, Vanilla CSS, Custom Animations.
+- **State Management & Data Fetching**: TanStack React Query v5, Zustand / Local Storage.
+- **Icons & Charts**: Lucide React, Recharts.
+- **Audio & Speech**: Web Audio API, Web SpeechSynthesis API.
+
+### Backend
+- **Core**: Java 17+, Spring Boot 3.
+- **Security**: Spring Security, JWT (JSON Web Token) Authentication.
+- **Database & ORM**: Spring Data JPA, H2 Database / MySQL.
+- **Build Tool**: Apache Maven.
+
+---
+
+## 📦 Cài Đặt & Khởi Chạy
+
+### Yêu Cầu Hệ Thống
+- **Node.js**: `18.x` trở lên.
+- **Java JDK**: `17` trở lên.
+- **Maven**: `3.8+` (hoặc sử dụng `./mvnw` đính kèm).
+
+---
+
+### 1. Khởi Chạy Backend (Spring Boot)
+
+```bash
+# 1. Di chuyển vào thư mục backend
+cd backend
+
+# 2. Biên dịch và chạy ứng dụng Spring Boot
+./mvnw spring-boot:run
+# (Hoặc trên Windows Command Prompt: mvnw.cmd spring-boot:run)
+```
+Backend sẽ khởi chạy tại port `8080` (API endpoint: `http://localhost:8080/api/v1`).
+
+---
+
+### 2. Khởi Chạy Frontend (React + Vite)
+
+```bash
+# 1. Mở terminal tại thư mục gốc của dự án
+cd bom_coffee_POS-main
+
+# 2. Cài đặt các gói phụ thuộc (Dependencies)
+npm install
+
+# 3. Chạy môi trường phát triển (Development Mode)
+npm run dev
+```
+Frontend sẽ khởi chạy tại: `http://localhost:5173`.
+
+---
+
+## 📁 Cấu Trúc Dự Án
+
+```
+bom_coffee_POS-main/
+├── backend/                        # Nguồn ứng dụng Spring Boot Backend
+│   ├── src/main/java/com/bomcoffee/pos/
+│   │   ├── auth/                   # Controller & JWT Security
+│   │   ├── billiard/               # Quản lý giờ chơi & giá bi-a
+│   │   ├── category/               # Quản lý danh mục
+│   │   ├── kds/                    # API màn hình pha chế KDS
+│   │   ├── order/                  # Quản lý đơn hàng & thanh toán
+│   │   ├── product/                # Quản lý món ăn & nước uống
+│   │   ├── report/                 # Báo cáo doanh thu
+│   │   ├── table/                  # Quản lý bàn & trạng thái
+│   │   └── user/                   # Quản lý tài khoản & nhân viên
+│   └── pom.xml
+├── src/                            # Nguồn ứng dụng React Frontend
+│   ├── app/                        # Layout, Router & Zustand Store
+│   ├── features/                   # Tính năng theo module
+│   │   ├── billiard/               # Quản lý bàn bi-a & cấu hình giá
+│   │   ├── history/                # Lịch sử đơn & chi tiết đơn
+│   │   ├── kds/                    # Màn hình pha chế KDS
+│   │   ├── menu/                   # Quản lý thực đơn món nước
+│   │   ├── order/                  # Sơ đồ bàn, POS Order & Drink Options
+│   │   ├── report/                 # Dashboard báo cáo doanh thu & biểu đồ
+│   │   └── staff/                  # Quản lý nhân viên
+│   ├── shared/                     # Components, API client & Utilities
+│   │   ├── components/             # Button, Card, Modal, Toggle, Loading...
+│   │   └── lib/                    # api.js, audioService.js, utils.js
+│   ├── index.css
+│   └── main.jsx
+├── HUONG_DAN_SU_DUNG.md            # Tài liệu hướng dẫn sử dụng & quy trình hệ thống
+├── index.html
+├── package.json
+├── tailwind.config.js
+└── vite.config.js
+```
+
+---
+
+## 📖 Tài Liệu Hướng Dẫn Sử Dụng
+Chi tiết quy trình vận hành và hướng dẫn từng bước cho các bộ phận (Phục vụ, Thu ngân, Pha chế, Quản lý) vui lòng tham khảo file:  
+👉 **[HUONG_DAN_SU_DUNG.md](file:///d:/bom_coffee_POS-main/HUONG_DAN_SU_DUNG.md)**
+
+---
+
+## 📝 License
+Phát triển cho **Bom Coffee POS & Billiards System**.

@@ -28,8 +28,8 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -44,8 +44,9 @@ public class BilliardServiceImpl implements BilliardService {
 
     @Override
     public BilliardSession startSession(Long tableId, User currentUser) {
-        sessionRepository.findByTableIdAndStatus(tableId, BilliardSessionStatus.PLAYING)
-                .ifPresent(s -> { throw new BusinessException("Bàn này đang có phiên chơi", "SESSION_ALREADY_ACTIVE"); });
+        if (findPlaying(tableId).isPresent()) {
+            throw new BusinessException("Bàn này đang có phiên chơi", "SESSION_ALREADY_ACTIVE");
+        }
 
         RestaurantTable table = tableRepository.findById(tableId)
                 .orElseThrow(() -> new ResourceNotFoundException("Table", tableId));
@@ -77,9 +78,11 @@ public class BilliardServiceImpl implements BilliardService {
     }
 
     @Override
-    public BilliardSession stopSession(Long tableId) {
-        BilliardSession session = sessionRepository.findByTableIdAndStatus(tableId, BilliardSessionStatus.PLAYING)
-                .orElseThrow(() -> new BusinessException("Không tìm thấy phiên chơi đang hoạt động", "NO_ACTIVE_SESSION"));
+    public BilliardSession stopSession(Long tableId, Long sessionId) {
+        BilliardSession session = resolveSessionToStop(tableId, sessionId);
+        if (session.getStatus() == BilliardSessionStatus.FINISHED) {
+            return session;
+        }
 
         LocalDateTime endTime = LocalDateTime.now();
         session.setEndTime(endTime);
@@ -96,10 +99,10 @@ public class BilliardServiceImpl implements BilliardService {
         BilliardSession saved = sessionRepository.save(session);
 
         if (order != null && order.getStatus() == OrderStatus.OPEN) {
-            if (order.getBilliardSessions() == null || order.getBilliardSessions().stream().noneMatch(s -> s.getId().equals(saved.getId()))) {
-                if (order.getBilliardSessions() == null) {
-                    order.setBilliardSessions(new java.util.ArrayList<>());
-                }
+            if (order.getBilliardSessions() == null) {
+                order.setBilliardSessions(new java.util.ArrayList<>());
+            }
+            if (order.getBilliardSessions().stream().noneMatch(s -> s.getId().equals(saved.getId()))) {
                 order.getBilliardSessions().add(saved);
             }
             order.recalculate();
@@ -112,21 +115,41 @@ public class BilliardServiceImpl implements BilliardService {
     @Override
     @Transactional(readOnly = true)
     public Map<String, Object> getCurrentSession(Long tableId) {
-        return sessionRepository.findByTableIdAndStatus(tableId, BilliardSessionStatus.PLAYING)
-                .map(session -> {
-                    long elapsedSeconds = Duration.between(session.getStartTime(), LocalDateTime.now()).getSeconds();
-                    BigDecimal currentAmount = calculateAmount(tableId, session.getStartTime(), LocalDateTime.now());
-                    Map<String, Object> data = new HashMap<>();
-                    data.put("sessionId", session.getId());
-                    data.put("orderId", session.getOrder() != null ? session.getOrder().getId() : null);
-                    data.put("sessionNo", session.getSessionNo());
-                    data.put("startTime", session.getStartTime());
-                    data.put("elapsedSeconds", elapsedSeconds);
-                    data.put("currentAmount", currentAmount);
-                    data.put("status", session.getStatus().name());
-                    return data;
-                })
+        return findPlaying(tableId)
+                .map(session -> toCurrentMap(session, tableId))
                 .orElse(null);
+    }
+
+    private Optional<BilliardSession> findPlaying(Long tableId) {
+        return sessionRepository.findByTableIdAndStatus(tableId, BilliardSessionStatus.PLAYING);
+    }
+
+    private BilliardSession resolveSessionToStop(Long tableId, Long sessionId) {
+        if (sessionId != null) {
+            BilliardSession byId = sessionRepository.findById(sessionId)
+                    .orElseThrow(() -> new BusinessException("Không tìm thấy phiên chơi đang hoạt động", "NO_ACTIVE_SESSION"));
+            if (byId.getTable() != null && !byId.getTable().getId().equals(tableId)) {
+                throw new BusinessException("Phiên chơi không thuộc bàn này", "SESSION_TABLE_MISMATCH");
+            }
+            return byId;
+        }
+        return findPlaying(tableId)
+                .orElseThrow(() -> new BusinessException("Không tìm thấy phiên chơi đang hoạt động", "NO_ACTIVE_SESSION"));
+    }
+
+    private Map<String, Object> toCurrentMap(BilliardSession session, Long tableId) {
+        LocalDateTime now = LocalDateTime.now();
+        long elapsedSeconds = Math.max(Duration.between(session.getStartTime(), now).getSeconds(), 0);
+        Map<String, Object> data = new HashMap<>();
+        data.put("sessionId", session.getId());
+        data.put("orderId", session.getOrder() != null ? session.getOrder().getId() : null);
+        data.put("sessionNo", session.getSessionNo());
+        data.put("startTime", session.getStartTime());
+        data.put("endTime", now);
+        data.put("elapsedSeconds", elapsedSeconds);
+        data.put("currentAmount", calculateAmount(tableId, session.getStartTime(), now));
+        data.put("status", session.getStatus().name());
+        return data;
     }
 
     private Order createOpenOrder(RestaurantTable table, User currentUser) {
@@ -149,7 +172,10 @@ public class BilliardServiceImpl implements BilliardService {
                 .map(BilliardPricing::getPricePerHour)
                 .orElse(BigDecimal.valueOf(80000));
 
-        long minutes = Math.max(Duration.between(start, end).toMinutes(), 0);
-        return pricePerHour.multiply(BigDecimal.valueOf(minutes)).divide(BigDecimal.valueOf(60), 2, java.math.RoundingMode.HALF_UP);
+        long seconds = Math.max(Duration.between(start, end).getSeconds(), 0);
+        long billableSeconds = seconds == 0 ? 0 : Math.max(seconds, 60);
+        return pricePerHour
+                .multiply(BigDecimal.valueOf(billableSeconds))
+                .divide(BigDecimal.valueOf(3600), 2, java.math.RoundingMode.HALF_UP);
     }
 }

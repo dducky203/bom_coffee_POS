@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { billiardApi, tableApi } from '../../shared/lib/api'
+import { billiardApi } from '../../shared/lib/api'
+import { tablesQuery } from '../../shared/lib/queries'
 import { Card, CardContent } from '../../shared/components/Card'
 import { Button } from '../../shared/components/Button'
-import { formatCurrency, formatDuration } from '../../shared/lib/utils'
+import { durationSecondsBetween, formatCurrency, formatDuration, formatPlayDuration, formatTimeOnly } from '../../shared/lib/utils'
 import { Play, Square, Clock } from 'lucide-react'
 import { ConfirmModal } from '../../shared/components/ConfirmModal'
 import toast from 'react-hot-toast'
@@ -14,10 +15,7 @@ export function BilliardPage() {
   const [error, setError] = useState('')
   const [confirmTableId, setConfirmTableId] = useState(null)
 
-  const { data: tables = [], isLoading } = useQuery({
-    queryKey: ['tables'],
-    queryFn: tableApi.list,
-  })
+  const { data: tables = [], isLoading } = useQuery(tablesQuery)
 
   const billiardTables = tables.filter(t => t.type === 'BILLIARD')
 
@@ -53,17 +51,21 @@ export function BilliardPage() {
   })
 
   const stopSession = useMutation({
-    mutationFn: (tableId) => billiardApi.stop(tableId),
+    mutationFn: ({ tableId, sessionId }) => billiardApi.stop(tableId, sessionId),
     onSuccess: (saved) => {
       setError('')
       invalidate()
-      toast.success(`Đã kết thúc giờ chơi. Tổng tiền: ${formatCurrency(saved.totalAmount)}`, {
-        duration: 5000,
-        icon: '🎱'
-      })
+      const playTime = formatPlayDuration(durationSecondsBetween(saved.startTime, saved.endTime))
+      toast.success(
+        `Đã chốt ${formatTimeOnly(saved.startTime)} → ${formatTimeOnly(saved.endTime)} (${playTime}). Tổng tiền: ${formatCurrency(saved.totalAmount)}`,
+        { duration: 5000, icon: '🎱' }
+      )
       setConfirmTableId(null)
     },
-    onError: (err) => setError(err.message),
+    onError: (err) => {
+      setError(err.message)
+      invalidate()
+    },
   })
 
   const sessionOf = (tableId) => sessions.find(s => s.tableId === tableId)?.session
@@ -81,14 +83,12 @@ export function BilliardPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {billiardTables.map(table => {
           const activeSession = sessionOf(table.id)
-          let elapsedSeconds = 0
-          let currentPrice = 0
-
-          if (activeSession) {
-            elapsedSeconds = activeSession.elapsedSeconds
-              ?? Math.floor((now.getTime() - new Date(activeSession.startTime).getTime()) / 1000)
-            currentPrice = Number(activeSession.currentAmount || 0)
-          }
+          const startTime = activeSession?.startTime
+          const endTime = activeSession ? now : null
+          const elapsedSeconds = startTime
+            ? Math.max(0, Math.floor((now.getTime() - new Date(startTime).getTime()) / 1000))
+            : 0
+          const currentPrice = Number(activeSession?.currentAmount || 0)
 
           return (
             <Card key={table.id} className={`overflow-hidden transition-all ${activeSession ? 'border-brand-500 shadow-md shadow-brand-500/20' : ''}`}>
@@ -107,7 +107,26 @@ export function BilliardPage() {
                     <span>{formatDuration(elapsedSeconds)}</span>
                   </div>
 
-                  <div className="pt-4 border-t border-brand-100 dark:border-brand-700">
+                  <div className="text-sm space-y-1.5 text-brand-700 dark:text-brand-300">
+                    <div className="flex justify-between">
+                      <span>Giờ bắt đầu</span>
+                      <span className="font-semibold font-mono">{startTime ? formatTimeOnly(startTime) : '--:--:--'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Giờ kết thúc</span>
+                      <span className="font-semibold font-mono">{endTime ? formatTimeOnly(endTime) : '--:--:--'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Thời gian chơi</span>
+                      <span className="font-semibold">{activeSession ? formatPlayDuration(elapsedSeconds) : '—'}</span>
+                    </div>
+                    <div className="flex justify-between pt-1 border-t border-brand-100 dark:border-brand-700">
+                      <span>Tiền giờ</span>
+                      <span className="font-bold text-brand-900 dark:text-brand-50">{formatCurrency(currentPrice)}</span>
+                    </div>
+                  </div>
+
+                  <div className="pt-2">
                     {!activeSession ? (
                       <Button onClick={() => startSession.mutate(table.id)} className="w-full gap-2 bg-green-600 hover:bg-green-700">
                         <Play size={18} /> Bắt đầu
@@ -128,9 +147,17 @@ export function BilliardPage() {
       <ConfirmModal
         isOpen={!!confirmTableId}
         onClose={() => setConfirmTableId(null)}
-        onConfirm={() => stopSession.mutate(confirmTableId)}
+        onConfirm={() => stopSession.mutate({
+          tableId: confirmTableId,
+          sessionId: sessionOf(confirmTableId)?.sessionId,
+        })}
         title="Kết thúc giờ chơi Bi-a"
-        message="Bạn có chắc chắn muốn kết thúc giờ chơi và tính tiền cho bàn này không?"
+        message={(() => {
+          const session = sessionOf(confirmTableId)
+          if (!session) return 'Bạn có chắc chắn muốn kết thúc giờ chơi và tính tiền cho bàn này không?'
+          const elapsed = durationSecondsBetween(session.startTime, now)
+          return `Giờ bắt đầu: ${formatTimeOnly(session.startTime)}\nGiờ kết thúc: ${formatTimeOnly(now)}\nThời gian: ${formatPlayDuration(elapsed)}\nTiền giờ: ${formatCurrency(session.currentAmount)}\n\nChốt phiên này?`
+        })()}
         confirmText="Kết thúc & Tính tiền"
         cancelText="Hủy"
         isDestructive={false}

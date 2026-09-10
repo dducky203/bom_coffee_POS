@@ -70,7 +70,6 @@ com\bomcoffee\pos\config\CorsConfig.class
 com\bomcoffee\pos\billiard\service\impl\BilliardServiceImpl.class
 com\bomcoffee\pos\common\response\ApiResponse.class
 com\bomcoffee\pos\order\repository\OrderRepository.class
-com\bomcoffee\pos\config\FlywayConfig.class
 com\bomcoffee\pos\billiard\repository\BilliardSessionRepository.class
 com\bomcoffee\pos\BomCoffeePosApplication.class
 com\bomcoffee\pos\order\entity\OrderItemStatusLog.class

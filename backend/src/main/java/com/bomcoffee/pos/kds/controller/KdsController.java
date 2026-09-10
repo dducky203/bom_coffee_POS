@@ -3,8 +3,10 @@ package com.bomcoffee.pos.kds.controller;
 import com.bomcoffee.pos.common.response.ApiResponse;
 import com.bomcoffee.pos.kds.service.KdsService;
 import com.bomcoffee.pos.order.entity.OrderItem;
+import com.bomcoffee.pos.user.entity.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -18,8 +20,10 @@ public class KdsController {
     private final KdsService kdsService;
 
     @GetMapping("/queue")
-    public ResponseEntity<ApiResponse<List<OrderItem>>> getQueue() {
-        return ResponseEntity.ok(ApiResponse.success(kdsService.getQueue()));
+    public ResponseEntity<ApiResponse<List<OrderItem>>> getQueue(
+            @RequestParam(defaultValue = "false") boolean all,
+            @AuthenticationPrincipal User currentUser) {
+        return ResponseEntity.ok(ApiResponse.success(kdsService.getQueue(all, currentUser)));
     }
 
     @PatchMapping("/items/{itemId}/status")

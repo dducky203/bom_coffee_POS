@@ -56,6 +56,9 @@ public class Order {
     @Column(name = "final_amount", precision = 12, scale = 2)
     private BigDecimal finalAmount = BigDecimal.ZERO;
 
+    @Column(name = "customer_name", length = 100)
+    private String customerName;
+
     private LocalDateTime closedAt;
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)

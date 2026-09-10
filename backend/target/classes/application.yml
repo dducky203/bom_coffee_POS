@@ -21,8 +21,18 @@ spring:
         dialect: org.hibernate.dialect.MySQLDialect
         format_sql: true
 
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 6MB
+
   flyway:
     enabled: false  # Tắt Flyway, dùng Hibernate auto-update
+
+cloudinary:
+  cloud-name: ${CLOUDINARY_CLOUD_NAME:doslcoy82}
+  api-key: ${CLOUDINARY_API_KEY:782598553554941}
+  api-secret: ${CLOUDINARY_API_SECRET:XIrVpff4K5tVeMm4nd4NW8XB0Bo}
 
 server:
   port: 8080

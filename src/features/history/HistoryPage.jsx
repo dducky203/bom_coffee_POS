@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
-import { historyApi, tableApi } from '../../shared/lib/api'
-import { formatCurrency } from '../../shared/lib/utils'
+import { historyApi } from '../../shared/lib/api'
+import { tablesQuery } from '../../shared/lib/queries'
+import { billiardTimeRangeLabel, formatCurrency, orderContentSummary } from '../../shared/lib/utils'
 import { Button } from '../../shared/components/Button'
 import { Card, CardContent } from '../../shared/components/Card'
 import { Badge } from '../../shared/components/Badge'
@@ -39,6 +40,23 @@ function statusLabel(status) {
       return { label: 'Đã hủy', color: 'bg-red-100 text-red-800' }
     default:
       return { label: status, color: 'bg-gray-100 text-gray-800' }
+  }
+}
+
+function formatPaymentMethodLabel(order) {
+  const rawMethod = order?.paymentMethod || (order?.payments && order.payments[0]?.method)
+  switch (rawMethod) {
+    case 'CASH':
+      return { label: 'Tiền mặt', color: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border-emerald-200' }
+    case 'BANK_TRANSFER':
+    case 'QR':
+      return { label: 'CK', color: 'bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border-blue-200' }
+    case 'CARD':
+      return { label: 'Thẻ', color: 'bg-purple-50 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300 border-purple-200' }
+    case 'EWALLET':
+      return { label: 'Ví điện tử', color: 'bg-pink-50 text-pink-700 dark:bg-pink-950/40 dark:text-pink-300 border-pink-200' }
+    default:
+      return { label: rawMethod || 'Tiền mặt', color: 'bg-gray-50 text-gray-700 dark:bg-gray-800 dark:text-gray-300 border-gray-200' }
   }
 }
 
@@ -81,10 +99,7 @@ export function HistoryPage() {
     placeholderData: (prev) => prev,
   })
 
-  const { data: tables = [] } = useQuery({
-    queryKey: ['tables'],
-    queryFn: tableApi.list,
-  })
+  const { data: tables = [] } = useQuery(tablesQuery)
 
   const { data: staffs = [] } = useQuery({
     queryKey: ['history-staffs'],
@@ -271,8 +286,10 @@ export function HistoryPage() {
                   <tr>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-brand-700 uppercase">Mã đơn</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-brand-700 uppercase">Bàn</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-brand-700 uppercase">Nội dung</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-brand-700 uppercase">Thời gian đóng</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-brand-700 uppercase">Nhân viên</th>
+                    <th className="px-4 py-3 text-center text-xs font-semibold text-brand-700 uppercase">Thanh toán</th>
                     <th className="px-4 py-3 text-right text-xs font-semibold text-brand-700 uppercase">Tổng tiền</th>
                     <th className="px-4 py-3 text-center text-xs font-semibold text-brand-700 uppercase">Trạng thái</th>
                     <th className="px-4 py-3 text-center text-xs font-semibold text-brand-700 uppercase">Chi tiết</th>
@@ -281,6 +298,7 @@ export function HistoryPage() {
                 <tbody className="divide-y divide-brand-100">
                   {orders.map((order) => {
                     const status = statusLabel(order.status)
+                    const payment = formatPaymentMethodLabel(order)
                     return (
                       <tr key={order.id} className="hover:bg-brand-50 transition-colors">
                         <td className="px-4 py-3 text-sm font-mono text-brand-900">
@@ -289,11 +307,27 @@ export function HistoryPage() {
                             <span className="ml-2 text-[10px] uppercase text-blue-600">gọi thêm</span>
                           )}
                         </td>
-                        <td className="px-4 py-3 text-sm text-brand-700">{order.table?.name || '-'}</td>
+                        <td className="px-4 py-3 text-sm text-brand-700">
+                          <p>{order.table?.name || '-'}</p>
+                          {order.customerName && (
+                            <p className="text-xs text-brand-500 mt-0.5">Chủ bàn: {order.customerName}</p>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-brand-700">
+                          <p className="font-medium">{orderContentSummary(order)}</p>
+                          {billiardTimeRangeLabel(order.billiardSessions) && (
+                            <p className="text-xs text-brand-500 mt-0.5">{billiardTimeRangeLabel(order.billiardSessions)}</p>
+                          )}
+                        </td>
                         <td className="px-4 py-3 text-sm text-brand-600">
                           {order.closedAt ? format(new Date(order.closedAt), 'dd/MM/yyyy HH:mm', { locale: vi }) : '-'}
                         </td>
                         <td className="px-4 py-3 text-sm text-brand-700">{order.staff?.fullName || '-'}</td>
+                        <td className="px-4 py-3 text-center">
+                          <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold border ${payment.color}`}>
+                            {payment.label}
+                          </span>
+                        </td>
                         <td className="px-4 py-3 text-sm text-right font-semibold text-brand-900">
                           {formatCurrency(order.finalAmount)}
                         </td>

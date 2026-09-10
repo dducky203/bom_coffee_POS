@@ -9,10 +9,15 @@ import com.bomcoffee.pos.notification.dto.KdsNotificationDTO;
 import com.bomcoffee.pos.notification.dto.TableOrderNotificationDTO;
 import com.bomcoffee.pos.order.entity.OrderItem;
 import com.bomcoffee.pos.order.repository.OrderItemRepository;
+import com.bomcoffee.pos.user.entity.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -21,13 +26,35 @@ import java.util.Map;
 @Transactional
 public class KdsServiceImpl implements KdsService {
 
+    private static final ZoneId VN_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
+
     private final OrderItemRepository orderItemRepository;
     private final NotificationService notificationService;
 
     @Override
-    public List<OrderItem> getQueue() {
-        List<OrderItem> items = orderItemRepository.findByStatusIn(
-                List.of(OrderItemStatus.PENDING, OrderItemStatus.IN_PROGRESS, OrderItemStatus.DONE));
+    public List<OrderItem> getQueue(boolean all, User currentUser) {
+        boolean isAdmin = currentUser != null
+                && currentUser.getRole() != null
+                && "ADMIN".equalsIgnoreCase(currentUser.getRole().getName());
+        LocalDateTime startOfToday = LocalDate.now(VN_ZONE).atStartOfDay();
+
+        List<OrderItem> items;
+        if (all && isAdmin) {
+            items = orderItemRepository.findByStatusIn(
+                    List.of(OrderItemStatus.PENDING, OrderItemStatus.IN_PROGRESS, OrderItemStatus.DONE));
+        } else {
+            items = new ArrayList<>(orderItemRepository.findByStatusInAndCreatedAtGreaterThanEqual(
+                    List.of(OrderItemStatus.PENDING, OrderItemStatus.IN_PROGRESS, OrderItemStatus.DONE),
+                    startOfToday));
+            items.addAll(orderItemRepository.findByStatusInAndCreatedAtLessThan(
+                    List.of(OrderItemStatus.PENDING, OrderItemStatus.IN_PROGRESS),
+                    startOfToday));
+        }
+        hydrate(items);
+        return items;
+    }
+
+    private void hydrate(List<OrderItem> items) {
         items.forEach(item -> {
             if (item.getOrder() != null && item.getOrder().getTable() != null) {
                 item.getOrder().getTable().getName();
@@ -36,7 +63,6 @@ public class KdsServiceImpl implements KdsService {
                 item.getProduct().getName();
             }
         });
-        return items;
     }
 
     @Override

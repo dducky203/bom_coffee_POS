@@ -5,10 +5,13 @@ import com.bomcoffee.pos.common.enums.OrderItemStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Repository
 public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
     List<OrderItem> findByStatusIn(List<OrderItemStatus> statuses);
+    List<OrderItem> findByStatusInAndCreatedAtGreaterThanEqual(List<OrderItemStatus> statuses, LocalDateTime from);
+    List<OrderItem> findByStatusInAndCreatedAtLessThan(List<OrderItemStatus> statuses, LocalDateTime from);
     List<OrderItem> findByOrderId(Long orderId);
 }

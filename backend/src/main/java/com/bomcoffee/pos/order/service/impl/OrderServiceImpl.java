@@ -1,5 +1,6 @@
 package com.bomcoffee.pos.order.service.impl;
 
+import com.bomcoffee.pos.common.enums.BilliardSessionStatus;
 import com.bomcoffee.pos.common.enums.OrderItemStatus;
 import com.bomcoffee.pos.common.enums.OrderStatus;
 import com.bomcoffee.pos.common.enums.TableStatus;
@@ -92,14 +93,18 @@ public class OrderServiceImpl implements OrderService {
         }
         Order order = orderRepository.findByTableIdAndStatus(req.getTableId(), OrderStatus.OPEN)
                 .orElseGet(() -> createNewOrder(req.getTableId(), null, currentUser));
+        applyCustomerName(order, req.getCustomerName());
+        orderRepository.save(order);
         for (AddItemRequest item : req.getItems()) {
             addItemToOrder(order.getId(), item, currentUser);
         }
         attachOrphanBilliardSessions(order);
+        pruneStaleBilliardSessions(order);
         if (req.isPayNow()) {
             // For immediate payment during submit, create a single payment detail
             CheckoutRequest checkout = new CheckoutRequest();
             checkout.setDiscountAmount(BigDecimal.ZERO);
+            checkout.setCustomerName(req.getCustomerName());
             List<PaymentController.PaymentDetail> payments = new ArrayList<>();
             PaymentController.PaymentDetail detail = new PaymentController.PaymentDetail();
             detail.setMethod(req.getMethod());
@@ -144,7 +149,19 @@ public class OrderServiceImpl implements OrderService {
                 .build()
         );
         attachOrphanBilliardSessions(saved);
+        pruneStaleBilliardSessions(saved);
         return saved;
+    }
+
+    private void applyCustomerName(Order order, String customerName) {
+        if (order == null || customerName == null) {
+            return;
+        }
+        String trimmed = customerName.trim();
+        if (trimmed.isEmpty()) {
+            return;
+        }
+        order.setCustomerName(trimmed.length() > 100 ? trimmed.substring(0, 100) : trimmed);
     }
 
     @Override
@@ -276,13 +293,15 @@ public class OrderServiceImpl implements OrderService {
         if (order.getBilliardSessions() != null) {
             order.getBilliardSessions().size();
         }
+        pruneStaleBilliardSessions(order);
     }
 
     private void attachOrphanBilliardSessions(Order order) {
         if (order.getTable() == null) {
             return;
         }
-        List<BilliardSession> orphans = billiardSessionRepository.findByTableIdAndOrderIsNull(order.getTable().getId());
+        List<BilliardSession> orphans = billiardSessionRepository.findByTableIdAndOrderIsNullAndStatus(
+                order.getTable().getId(), BilliardSessionStatus.PLAYING);
         if (orphans.isEmpty()) {
             return;
         }
@@ -291,6 +310,28 @@ public class OrderServiceImpl implements OrderService {
             session.setOrder(order);
             session.setSessionNo(nextNo++);
             billiardSessionRepository.save(session);
+        }
+        order.recalculate();
+        orderRepository.save(order);
+    }
+
+    private void pruneStaleBilliardSessions(Order order) {
+        if (order == null || order.getStatus() != OrderStatus.OPEN
+                || order.getBilliardSessions() == null || order.getCreatedAt() == null) {
+            return;
+        }
+        LocalDateTime cutoff = order.getCreatedAt().minusMinutes(2);
+        List<BilliardSession> stale = order.getBilliardSessions().stream()
+                .filter(session -> session.getStatus() == BilliardSessionStatus.FINISHED)
+                .filter(session -> session.getStartTime() != null && session.getStartTime().isBefore(cutoff))
+                .toList();
+        if (stale.isEmpty()) {
+            return;
+        }
+        for (BilliardSession session : stale) {
+            session.setOrder(null);
+            billiardSessionRepository.save(session);
+            order.getBilliardSessions().remove(session);
         }
         order.recalculate();
         orderRepository.save(order);

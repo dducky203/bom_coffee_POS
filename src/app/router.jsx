@@ -10,6 +10,7 @@ import { MenuPage } from '../features/menu/MenuPage'
 import { BilliardPricingPage } from '../features/billiard/BilliardPricingPage'
 import { HistoryPage } from '../features/history/HistoryPage'
 import { OrderDetailPage } from '../features/history/OrderDetailPage'
+import { StaffPage } from '../features/staff/StaffPage'
 
 export const router = createBrowserRouter([
   {
@@ -55,6 +56,10 @@ export const router = createBrowserRouter([
       {
         path: 'history/:id',
         element: <OrderDetailPage />
+      },
+      {
+        path: 'staff',
+        element: <StaffPage />
       }
     ]
   }

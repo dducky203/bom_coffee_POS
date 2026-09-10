@@ -4,6 +4,7 @@ import com.bomcoffee.pos.billiard.entity.BilliardSession;
 import com.bomcoffee.pos.billiard.service.BilliardService;
 import com.bomcoffee.pos.common.response.ApiResponse;
 import com.bomcoffee.pos.user.entity.User;
+import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -27,9 +28,14 @@ public class BilliardController {
     }
 
     @PostMapping("/{tableId}/stop")
-    public ResponseEntity<ApiResponse<BilliardSession>> stopSession(@PathVariable Long tableId) {
-        BilliardSession saved = billiardService.stopSession(tableId);
-        return ResponseEntity.ok(ApiResponse.success(saved, "Kết thúc phiên chơi. Tổng tiền: " + saved.getTotalAmount()));
+    public ResponseEntity<ApiResponse<BilliardSession>> stopSession(
+            @PathVariable Long tableId,
+            @RequestBody(required = false) StopRequest body) {
+        Long sessionId = body != null ? body.getSessionId() : null;
+        BilliardSession saved = billiardService.stopSession(tableId, sessionId);
+        String from = saved.getStartTime() != null ? saved.getStartTime().toLocalTime().withNano(0).toString() : "";
+        String to = saved.getEndTime() != null ? saved.getEndTime().toLocalTime().withNano(0).toString() : "";
+        return ResponseEntity.ok(ApiResponse.success(saved, "Kết thúc " + from + " → " + to + ". Tổng tiền: " + saved.getTotalAmount()));
     }
 
     @GetMapping("/{tableId}/current")
@@ -39,5 +45,10 @@ public class BilliardController {
             return ResponseEntity.ok(ApiResponse.success(data));
         }
         return ResponseEntity.ok(ApiResponse.success(null, "Không có phiên đang chơi"));
+    }
+
+    @Data
+    public static class StopRequest {
+        private Long sessionId;
     }
 }

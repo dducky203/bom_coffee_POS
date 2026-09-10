@@ -2,13 +2,15 @@ import React, { useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '../../app/store'
-import { billiardPricingApi, tableApi } from '../../shared/lib/api'
+import { billiardPricingApi } from '../../shared/lib/api'
+import { tablesQuery } from '../../shared/lib/queries'
 import { formatCurrency } from '../../shared/lib/utils'
 import { Button } from '../../shared/components/Button'
 import { Modal } from '../../shared/components/Modal'
+import { Select } from '../../shared/components/Select'
 import { Pencil, Plus, Trash2 } from 'lucide-react'
 
-const inputClass = 'w-full h-11 px-4 rounded-lg border border-brand-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none bg-white'
+const inputClass = 'w-full h-11 px-4 rounded-xl border border-brand-200 dark:border-brand-700 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none bg-white dark:bg-brand-800 text-brand-900 dark:text-brand-50 text-sm transition-all'
 
 const emptyForm = {
   tableId: '',
@@ -34,10 +36,7 @@ export function BilliardPricingPage() {
     queryFn: billiardPricingApi.list,
   })
 
-  const { data: tables = [] } = useQuery({
-    queryKey: ['tables'],
-    queryFn: tableApi.list,
-  })
+  const { data: tables = [] } = useQuery(tablesQuery)
 
   const billiardTables = tables.filter(t => t.type === 'BILLIARD')
 
@@ -139,19 +138,27 @@ export function BilliardPricingPage() {
           <form onSubmit={submit} className="space-y-3">
             <div>
               <label className="text-sm font-medium">Áp dụng cho bàn</label>
-              <select className={inputClass} value={form.tableId} onChange={(e) => setForm({ ...form, tableId: e.target.value })}>
-                <option value="">Tất cả bàn bi-a</option>
-                {billiardTables.map(table => (
-                  <option key={table.id} value={table.id}>{table.name}</option>
-                ))}
-              </select>
+              <Select
+                value={form.tableId}
+                onChange={(val) => setForm({ ...form, tableId: val })}
+                placeholder="Tất cả bàn bi-a"
+                options={[
+                  { value: '', label: 'Tất cả bàn bi-a' },
+                  ...billiardTables.map(t => ({ value: t.id, label: t.name }))
+                ]}
+              />
             </div>
             <div>
               <label className="text-sm font-medium">Loại ngày</label>
-              <select className={inputClass} value={form.dayType} onChange={(e) => setForm({ ...form, dayType: e.target.value })}>
-                <option value="WEEKDAY">Ngày thường</option>
-                <option value="WEEKEND">Cuối tuần</option>
-              </select>
+              <Select
+                value={form.dayType}
+                onChange={(val) => setForm({ ...form, dayType: val })}
+                placeholder="Chọn loại ngày..."
+                options={[
+                  { value: 'WEEKDAY', label: 'Ngày thường' },
+                  { value: 'WEEKEND', label: 'Cuối tuần' },
+                ]}
+              />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>

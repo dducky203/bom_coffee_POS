@@ -7,6 +7,6 @@ import java.util.Map;
 
 public interface BilliardService {
     BilliardSession startSession(Long tableId, User currentUser);
-    BilliardSession stopSession(Long tableId);
+    BilliardSession stopSession(Long tableId, Long sessionId);
     Map<String, Object> getCurrentSession(Long tableId);
 }

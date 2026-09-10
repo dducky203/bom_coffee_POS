@@ -101,5 +101,6 @@ public class OrderController {
         @NotNull private List<AddItemRequest> items;
         private boolean payNow;
         private PaymentMethod method;
+        private String customerName;
     }
 }
