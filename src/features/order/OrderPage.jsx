@@ -10,7 +10,7 @@ import { LoadingPage } from '../../shared/components/Loading'
 import { billiardApi, kdsApi, orderApi } from '../../shared/lib/api'
 import { buildDrinkNote } from '../../shared/lib/drinkOptions'
 import { categoriesQuery, productsQuery, tablesQuery, toppingsQuery } from '../../shared/lib/queries'
-import { durationSecondsBetween, formatCurrency, formatPlayDuration, formatTimeOnly, parseServerDate } from '../../shared/lib/utils'
+import { durationSecondsBetween, formatCurrency, formatPlayDuration, formatTimeOnly, liveElapsedSeconds } from '../../shared/lib/utils'
 import { DrinkOptionModal } from './DrinkOptionModal'
 import { InvoicePrint } from './InvoicePrint'
 
@@ -225,10 +225,7 @@ export function OrderPage() {
         status: 'PLAYING',
       }
       : null
-  const startTimeDate = parseServerDate(liveBilliard?.startTime)
-  const playingElapsed = startTimeDate
-    ? Math.max(0, Math.floor((now - startTimeDate.getTime()) / 1000))
-    : Number(liveBilliard?.elapsedSeconds || 0)
+  const playingElapsed = liveElapsedSeconds(liveBilliard?.startTime, now, liveBilliard?.elapsedSeconds)
   const itemsTotalAmount = cart.reduce((sum, item) => sum + (Number(item.unitPrice ?? item.product.basePrice) * item.quantity), 0)
   const orderTotal = Number(order?.finalAmount || order?.totalAmount || 0)
   const billiardAmount = Number(liveBilliard?.currentAmount || 0)

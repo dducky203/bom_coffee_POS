@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { authApi, setToken } from '../shared/lib/api'
+import { authApi, clearAuthStorage, setToken } from '../shared/lib/api'
 import { extraPriceOf, optionsKey, selectedToppings } from '../shared/lib/drinkOptions'
 
 const USER_KEY = 'bom_user'
@@ -28,9 +28,7 @@ export const useAuthStore = create((set) => ({
     return user
   },
   logout: () => {
-    setToken(null)
-    localStorage.removeItem('bom_token')
-    localStorage.removeItem(USER_KEY)
+    clearAuthStorage()
     set({ user: null })
   },
 }))

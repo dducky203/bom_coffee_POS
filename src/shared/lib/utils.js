@@ -31,27 +31,38 @@ export function formatDuration(seconds) {
   return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
 }
 
+/**
+ * Parse datetime từ backend.
+ * LocalDateTime Jackson thường trả "2026-09-11T22:12:44" (không có Z) = giờ tường của máy chủ/quán.
+ * Không được gắn 'Z' (UTC) vì sẽ lệch +7h và làm đồng hồ bi-a đứng ở 00:00:00.
+ */
 export function parseServerDate(value) {
   if (!value) return null
   if (value instanceof Date) return value
   if (typeof value === 'number') return new Date(value)
   if (typeof value === 'string') {
     const trimmed = value.trim().replace(' ', 'T')
-    // Nếu chuỗi ISO không có timezone (ví dụ: "2026-09-11T02:28:26"),
-    // server Render chạy múi giờ UTC nên ta gắn 'Z' để browser chuyển sang giờ địa phương (+07:00)
-    if (!trimmed.endsWith('Z') && !trimmed.includes('+') && !trimmed.slice(10).includes('-')) {
-      const parsedUtc = new Date(`${trimmed}Z`)
-      if (!Number.isNaN(parsedUtc.getTime())) {
-        return parsedUtc
-      }
+    // Đã có timezone (Z hoặc +07:00) → parse chuẩn
+    if (/([zZ]|[+-]\d{2}:?\d{2})$/.test(trimmed)) {
+      const withTz = new Date(trimmed)
+      return Number.isNaN(withTz.getTime()) ? null : withTz
     }
-    const parsed = new Date(trimmed)
-    if (!Number.isNaN(parsed.getTime())) {
-      return parsed
-    }
+    // Không timezone: coi là giờ địa phương (VN). Chrome: new Date('YYYY-MM-DDTHH:mm:ss') = local
+    const local = new Date(trimmed)
+    if (!Number.isNaN(local.getTime())) return local
   }
   const date = new Date(value)
   return Number.isNaN(date.getTime()) ? null : date
+}
+
+/** Số giây đã chơi, ưu tiên startTime local; fallback elapsedSeconds từ API. */
+export function liveElapsedSeconds(startTime, now = new Date(), fallbackElapsed = 0) {
+  const start = parseServerDate(startTime)
+  if (start) {
+    const elapsed = Math.floor((parseServerDate(now)?.getTime() - start.getTime()) / 1000)
+    if (Number.isFinite(elapsed) && elapsed >= 0) return elapsed
+  }
+  return Math.max(0, Number(fallbackElapsed) || 0)
 }
 
 export function formatDateTime(value) {

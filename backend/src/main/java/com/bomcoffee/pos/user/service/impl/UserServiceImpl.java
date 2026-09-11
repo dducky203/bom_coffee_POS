@@ -7,17 +7,23 @@ import com.bomcoffee.pos.user.controller.UserController.ResetPasswordRequest;
 import com.bomcoffee.pos.user.controller.UserController.UpdateUserRequest;
 import com.bomcoffee.pos.user.dto.RoleResponse;
 import com.bomcoffee.pos.user.dto.UserResponse;
+import com.bomcoffee.pos.user.dto.UserStatsResponse;
 import com.bomcoffee.pos.user.entity.Role;
 import com.bomcoffee.pos.user.entity.User;
 import com.bomcoffee.pos.user.repository.RoleRepository;
 import com.bomcoffee.pos.user.repository.UserRepository;
 import com.bomcoffee.pos.user.service.UserService;
+import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
@@ -35,14 +41,41 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<UserResponse> getAllUsers(String keyword, String roleName, Boolean active) {
-        String q = keyword == null ? "" : keyword.trim().toLowerCase(Locale.ROOT);
-        return userRepository.findAllByOrderByCreatedAtDesc().stream()
-                .filter(user -> !StringUtils.hasText(q) || matchesKeyword(user, q))
-                .filter(user -> !StringUtils.hasText(roleName) || roleName.equalsIgnoreCase(user.getRole().getName()))
-                .filter(user -> active == null || user.isActive() == active)
-                .map(UserResponse::from)
-                .toList();
+    public Page<UserResponse> getAllUsers(String keyword, String roleName, Boolean active, Pageable pageable) {
+        return userRepository.findAll(buildSpec(keyword, roleName, active), pageable)
+                .map(UserResponse::from);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public UserStatsResponse getStats() {
+        long active = userRepository.countByActiveTrue();
+        long locked = userRepository.countByActiveFalse();
+        return new UserStatsResponse(active + locked, active, locked);
+    }
+
+    private Specification<User> buildSpec(String keyword, String roleName, Boolean active) {
+        return (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            if (StringUtils.hasText(keyword)) {
+                String q = "%" + keyword.trim().toLowerCase(Locale.ROOT) + "%";
+                predicates.add(cb.or(
+                        cb.like(cb.lower(root.get("username")), q),
+                        cb.like(cb.lower(root.get("fullName")), q),
+                        cb.like(cb.lower(cb.coalesce(root.get("phone"), "")), q)
+                ));
+            }
+            if (StringUtils.hasText(roleName)) {
+                predicates.add(cb.equal(
+                        cb.upper(root.get("role").get("name")),
+                        roleName.trim().toUpperCase(Locale.ROOT)
+                ));
+            }
+            if (active != null) {
+                predicates.add(cb.equal(root.get("active"), active));
+            }
+            return cb.and(predicates.toArray(Predicate[]::new));
+        };
     }
 
     @Override
@@ -163,16 +196,6 @@ public class UserServiceImpl implements UserService {
     private boolean isLastActiveAdmin(User user) {
         long activeAdmins = userRepository.countByRole_NameAndActiveTrue(ADMIN_ROLE);
         return user.isActive() && isAdmin(user) && activeAdmins <= 1;
-    }
-
-    private boolean matchesKeyword(User user, String q) {
-        return contains(user.getUsername(), q)
-                || contains(user.getFullName(), q)
-                || contains(user.getPhone(), q);
-    }
-
-    private boolean contains(String value, String q) {
-        return value != null && value.toLowerCase(Locale.ROOT).contains(q);
     }
 
     private String requireText(String value, String message) {

@@ -3,6 +3,7 @@ package com.bomcoffee.pos.user.controller;
 import com.bomcoffee.pos.common.response.ApiResponse;
 import com.bomcoffee.pos.user.dto.RoleResponse;
 import com.bomcoffee.pos.user.dto.UserResponse;
+import com.bomcoffee.pos.user.dto.UserStatsResponse;
 import com.bomcoffee.pos.user.entity.User;
 import com.bomcoffee.pos.user.service.UserService;
 import jakarta.validation.Valid;
@@ -10,6 +11,10 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -26,11 +31,20 @@ public class UserController {
     private final UserService userService;
 
     @GetMapping
-    public ResponseEntity<ApiResponse<List<UserResponse>>> getAll(
+    public ResponseEntity<ApiResponse<Page<UserResponse>>> getAll(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String role,
-            @RequestParam(required = false) Boolean active) {
-        return ResponseEntity.ok(ApiResponse.success(userService.getAllUsers(keyword, role, active)));
+            @RequestParam(required = false) Boolean active,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        int pageSize = Math.min(Math.max(size, 1), 100);
+        Pageable pageable = PageRequest.of(Math.max(page, 0), pageSize, Sort.by(Sort.Direction.DESC, "createdAt"));
+        return ResponseEntity.ok(ApiResponse.success(userService.getAllUsers(keyword, role, active, pageable)));
+    }
+
+    @GetMapping("/stats")
+    public ResponseEntity<ApiResponse<UserStatsResponse>> getStats() {
+        return ResponseEntity.ok(ApiResponse.success(userService.getStats()));
     }
 
     @GetMapping("/roles")

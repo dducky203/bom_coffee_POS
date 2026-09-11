@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { billiardApi } from '../../shared/lib/api'
 import { tablesQuery } from '../../shared/lib/queries'
-import { durationSecondsBetween, formatCurrency, formatDuration, formatPlayDuration, formatTimeOnly, parseServerDate } from '../../shared/lib/utils'
+import { durationSecondsBetween, formatCurrency, formatDuration, formatPlayDuration, formatTimeOnly, liveElapsedSeconds } from '../../shared/lib/utils'
 import { Play, Square, Clock, Coffee, Settings2 } from 'lucide-react'
 import { ConfirmModal } from '../../shared/components/ConfirmModal'
 import { Button } from '../../shared/components/Button'
@@ -43,22 +43,22 @@ export function BilliardPage() {
     return () => clearInterval(timer)
   }, [])
 
-  const invalidate = () => {
-    queryClient.invalidateQueries({ queryKey: ['tables'] })
-    queryClient.invalidateQueries({ queryKey: ['billiard-sessions'] })
-  }
-
   const startSession = useMutation({
     mutationFn: (tableId) => billiardApi.start(tableId),
-    onSuccess: () => { setError(''); invalidate() },
+    onSuccess: async () => {
+      setError('')
+      await queryClient.invalidateQueries({ queryKey: ['billiard-sessions'] })
+      await queryClient.invalidateQueries({ queryKey: ['tables'] })
+    },
     onError: (err) => setError(err.message),
   })
 
   const stopSession = useMutation({
     mutationFn: ({ tableId, sessionId }) => billiardApi.stop(tableId, sessionId),
-    onSuccess: (saved) => {
+    onSuccess: async (saved) => {
       setError('')
-      invalidate()
+      await queryClient.invalidateQueries({ queryKey: ['billiard-sessions'] })
+      await queryClient.invalidateQueries({ queryKey: ['tables'] })
       const playTime = formatPlayDuration(durationSecondsBetween(saved.startTime, saved.endTime))
       toast.success(
         `Đã chốt ${formatTimeOnly(saved.startTime)} → ${formatTimeOnly(saved.endTime)} (${playTime}). Tổng tiền: ${formatCurrency(saved.totalAmount)}`,
@@ -66,9 +66,10 @@ export function BilliardPage() {
       )
       setConfirmTableId(null)
     },
-    onError: (err) => {
+    onError: async (err) => {
       setError(err.message)
-      invalidate()
+      await queryClient.invalidateQueries({ queryKey: ['billiard-sessions'] })
+      await queryClient.invalidateQueries({ queryKey: ['tables'] })
     },
   })
 
@@ -99,12 +100,11 @@ export function BilliardPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {billiardTables.map(table => {
           const activeSession = sessionOf(table.id)
-          const startTimeDate = parseServerDate(activeSession?.startTime)
-          const startTime = startTimeDate || activeSession?.startTime
+          const startTime = activeSession?.startTime
           const endTime = activeSession ? now : null
-          const elapsedSeconds = startTimeDate
-            ? Math.max(0, Math.floor((now.getTime() - startTimeDate.getTime()) / 1000))
-            : Number(activeSession?.elapsedSeconds || 0)
+          const elapsedSeconds = activeSession
+            ? liveElapsedSeconds(startTime, now, activeSession.elapsedSeconds)
+            : 0
           const currentPrice = Number(activeSession?.currentAmount || 0)
 
           return (
@@ -153,7 +153,7 @@ export function BilliardPage() {
                   </div>
 
                   <div className="flex justify-between items-center">
-                    <span className="text-brand-500">Giờ kết thúc</span>
+                    <span className="text-brand-500">{activeSession ? 'Hiện tại' : 'Giờ kết thúc'}</span>
                     <span className="font-mono font-semibold text-brand-900 dark:text-brand-100">
                       {endTime ? formatTimeOnly(endTime) : '--:--:--'}
                     </span>

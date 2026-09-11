@@ -2,6 +2,7 @@ import axios from 'axios'
 import toast from 'react-hot-toast'
 
 const TOKEN_KEY = 'bom_token'
+const USER_KEY = 'bom_user'
 
 export function getToken() {
   return localStorage.getItem(TOKEN_KEY)
@@ -15,14 +16,65 @@ export function setToken(token) {
   }
 }
 
+function parseJwtPayload(token) {
+  try {
+    const parts = String(token).split('.')
+    if (parts.length !== 3) return null
+    const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/')
+    const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), '=')
+    return JSON.parse(atob(padded))
+  } catch {
+    return null
+  }
+}
+
+/** Token còn hạn và đúng format JWT (không verify chữ ký phía FE). */
+export function isTokenValid(token = getToken()) {
+  if (!token || typeof token !== 'string') return false
+  const payload = parseJwtPayload(token)
+  if (!payload || typeof payload.exp !== 'number') return false
+  return payload.exp * 1000 > Date.now()
+}
+
+export function clearAuthStorage() {
+  setToken(null)
+  localStorage.removeItem(USER_KEY)
+}
+
+/** Xóa session và đưa về login nếu đang ở trang khác. */
+export function redirectToLogin() {
+  clearAuthStorage()
+  if (window.location.pathname !== '/login') {
+    window.location.assign('/login')
+  }
+}
+
+/** Trả token hợp lệ; nếu hết hạn / sai format thì xóa storage và trả null. */
+export function getValidToken() {
+  const token = getToken()
+  if (!token) return null
+  if (!isTokenValid(token)) {
+    clearAuthStorage()
+    return null
+  }
+  return token
+}
+
 export const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'https://bom-coffee-pos.onrender.com/api/v1',
 })
 
 api.interceptors.request.use((config) => {
-  const token = getToken()
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`
+  const isLogin = config.url?.includes('/auth/login')
+  if (!isLogin) {
+    const token = getToken()
+    if (token && !isTokenValid(token)) {
+      redirectToLogin()
+      return Promise.reject(new Error('Phiên đăng nhập đã hết hạn'))
+    }
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`
+    }
   }
   return config
 })
@@ -59,17 +111,16 @@ api.interceptors.response.use(
     err.code = body?.errorCode
     err.status = error.response?.status
 
-    // Only show error toast if it's not a 401 redirecting to login (to avoid double noise)
-    if (!error.config?.skipErrorToast && (err.status !== 401 || window.location.pathname !== '/login')) {
+    const isLoginRequest = error.config?.url?.includes('/auth/login')
+    const isUnauthorized = err.status === 401
+    const suppressToast = isUnauthorized && !isLoginRequest
+
+    if (!error.config?.skipErrorToast && !suppressToast) {
       toast.error(message)
     }
 
-    if (err.status === 401 && !error.config?.url?.includes('/auth/login')) {
-      setToken(null)
-      localStorage.removeItem('bom_user')
-      if (window.location.pathname !== '/login') {
-        window.location.assign('/login')
-      }
+    if (isUnauthorized && !isLoginRequest) {
+      redirectToLogin()
     }
     throw err
   }
@@ -167,6 +218,7 @@ export const historyApi = {
 
 export const userApi = {
   list: (params) => api.get('/users', { params }),
+  stats: () => api.get('/users/stats'),
   get: (id) => api.get(`/users/${id}`),
   roles: () => api.get('/users/roles'),
   create: (payload) => api.post('/users', payload),

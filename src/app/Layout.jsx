@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { Outlet, Navigate, Link, useLocation } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from './store'
-import { getToken } from '../shared/lib/api'
+import { getValidToken } from '../shared/lib/api'
 import { prefetchCatalog } from '../shared/lib/queries'
 import { 
   LogOut, LayoutGrid, Coffee, Clock, PieChart, CupSoda, 
@@ -45,7 +45,7 @@ export function Layout() {
     }
   }, [isDark])
 
-  if (!user || !getToken()) {
+  if (!user || !getValidToken()) {
     return <Navigate to="/login" replace />
   }
 

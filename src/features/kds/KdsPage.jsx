@@ -2,6 +2,7 @@ import React, { useMemo, useState, useEffect, useRef } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { kdsApi } from '../../shared/lib/api'
 import { audioService } from '../../shared/lib/audioService'
+import { buildOrderAnnounceText } from '../../shared/lib/orderAnnounce'
 import { useAuthStore } from '../../app/store'
 import { Card, CardContent } from '../../shared/components/Card'
 import { Badge } from '../../shared/components/Badge'
@@ -130,7 +131,9 @@ export function KdsPage() {
       queryClient.invalidateQueries({ queryKey: ['kds-queue'] })
       const remaining = pendingRef.current.filter(item => !itemsToUpdate.some(moved => moved.id === item.id))
       audioService.stop()
-      audioService.announcePendingQueue(groupItems(remaining, 'PENDING'))
+      groupItems(remaining, 'PENDING').forEach(group => {
+        audioService.speakText(buildOrderAnnounceText(group, 'pending'), { playAlert: true })
+      })
     },
   })
 
@@ -165,7 +168,9 @@ export function KdsPage() {
       primedSoundRef.current = true
       pendingIdsRef.current = currentIds
       if (pending.length > 0) {
-        audioService.announcePendingQueue(pendingGroups)
+        pendingGroups.forEach(group => {
+          audioService.speakText(buildOrderAnnounceText(group, 'pending'), { playAlert: true })
+        })
       }
       return
     }
@@ -173,11 +178,7 @@ export function KdsPage() {
     const newItems = pending.filter(item => !prevIds.has(item.id))
     if (newItems.length > 0) {
       groupItems(newItems, 'PENDING').forEach(group => {
-        audioService.announceNewOrder({
-          tableName: group.tableName,
-          items: group.items,
-          itemCount: group.items.reduce((sum, item) => sum + (item.quantity || 1), 0),
-        })
+        audioService.speakText(buildOrderAnnounceText(group, 'new'), { playAlert: true })
       })
     }
 

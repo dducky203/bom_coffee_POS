@@ -1,19 +1,23 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { Navigate, useLocation, Outlet } from 'react-router-dom'
-import { getToken } from '../../shared/lib/api'
+import { getValidToken } from '../../shared/lib/api'
 import { useAuthStore } from '../../app/store'
 
 export function ProtectedRoute({ allowedRoles, children }) {
-  const token = getToken()
+  const token = getValidToken()
   const user = useAuthStore(state => state.user)
+  const logout = useAuthStore(state => state.logout)
   const location = useLocation()
+  const unauthorized = !token || !user
 
-  // 1. Nếu không có token hoặc không có thông tin user -> chuyển hướng về trang login
-  if (!token || !user) {
+  useEffect(() => {
+    if (unauthorized) logout()
+  }, [unauthorized, logout])
+
+  if (unauthorized) {
     return <Navigate to="/login" replace state={{ from: location }} />
   }
 
-  // 2. Nếu có yêu cầu role mà role của user không nằm trong danh sách được phép -> chuyển hướng về trang không có quyền (403)
   if (allowedRoles && Array.isArray(allowedRoles) && !allowedRoles.includes(user.role)) {
     return <Navigate to="/403" replace />
   }

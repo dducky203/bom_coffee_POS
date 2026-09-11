@@ -1,4 +1,5 @@
-import { api, getToken } from './api'
+import { api } from './api'
+import { buildOrderAnnounceText } from './orderAnnounce'
 
 const SOUND_STORAGE_KEY = 'kds_sound_enabled'
 const ALERT_MP3 = '/sounds/tinhtinh.mp3'
@@ -78,7 +79,7 @@ function playChime() {
   }
 }
 
-function splitVietnameseChunks(text, maxLen = 160) {
+function splitVietnameseChunks(text, maxLen = 170) {
   const clean = String(text).replace(/\s+/g, ' ').trim()
   if (!clean) return []
   if (clean.length <= maxLen) return [clean]
@@ -86,18 +87,23 @@ function splitVietnameseChunks(text, maxLen = 160) {
   const parts = []
   let rest = clean
   while (rest.length > maxLen) {
-    let cut = rest.lastIndexOf(' ', maxLen)
+    const window = rest.slice(0, maxLen)
+    let cut = window.lastIndexOf('. ')
+    if (cut < 40) cut = window.lastIndexOf(', ')
+    if (cut < 40) cut = window.lastIndexOf(' ')
     if (cut < 40) cut = maxLen
-    parts.push(rest.slice(0, cut).trim())
-    rest = rest.slice(cut).trim()
+    const end = cut < maxLen && rest[cut] === '.' ? cut + 1 : cut
+    parts.push(rest.slice(0, end).trim())
+    rest = rest.slice(end).trim()
   }
   if (rest) parts.push(rest)
   return parts
 }
 
-function playAudioUrl(url) {
+function playAudioUrl(url, { playbackRate = 1 } = {}) {
   return new Promise((resolve) => {
     const audio = new Audio(url)
+    audio.playbackRate = playbackRate
     currentAudio = audio
     const done = () => {
       if (currentFinish !== done) return
@@ -137,7 +143,7 @@ async function speakWithGoogle(text) {
   }
   const url = URL.createObjectURL(blob)
   try {
-    await playAudioUrl(url)
+    await playAudioUrl(url, { playbackRate: 1.5 })
   } finally {
     URL.revokeObjectURL(url)
   }
@@ -151,7 +157,7 @@ function speakWithBrowser(text) {
     }
     const utterance = new SpeechSynthesisUtterance(text)
     utterance.lang = 'vi-VN'
-    utterance.rate = 0.95
+    utterance.rate = 1.5
     utterance.pitch = 1
     utterance.volume = 1
     utterance.onend = () => resolve()
@@ -218,14 +224,17 @@ function countItems(items = []) {
 }
 
 function announceNewOrder({ tableName, itemCount, items } = {}) {
-  const count = itemCount || countItems(items)
-  enqueue(`Có đơn mới. ${tableName || 'Có bàn'}. ${count} món.`, { playAlert: true })
+  if ((!items || items.length === 0) && itemCount) {
+    enqueue(`Có đơn mới. ${tableName || 'Có bàn'}. ${itemCount} món.`, { playAlert: true })
+    return
+  }
+  enqueue(buildOrderAnnounceText({ tableName, items }, 'new'), { playAlert: true })
 }
 
 function announcePendingQueue(groups = []) {
   if (!groups.length) return
   groups.forEach(group => {
-    enqueue(`Có đơn chờ pha chế. ${group.tableName}. ${countItems(group.items)} món.`, { playAlert: true })
+    enqueue(buildOrderAnnounceText(group, 'pending'), { playAlert: true })
   })
 }
 

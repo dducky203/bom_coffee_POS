@@ -1,9 +1,9 @@
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { format } from 'date-fns'
 import { vi } from 'date-fns/locale'
-import { Eye, EyeOff, KeyRound, Lock, Pencil, Plus, Search, Unlock, Users } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Eye, EyeOff, KeyRound, Lock, Pencil, Plus, Search, Unlock, Users } from 'lucide-react'
 import { useAuthStore } from '../../app/store'
 import { userApi } from '../../shared/lib/api'
 import { Button } from '../../shared/components/Button'
@@ -13,6 +13,7 @@ import { Badge } from '../../shared/components/Badge'
 import { Toggle } from '../../shared/components/Toggle'
 import { Select } from '../../shared/components/Select'
 
+const PAGE_SIZES = [10, 20, 50]
 const inputClass = 'w-full h-11 px-4 rounded-xl border border-brand-200 dark:border-brand-700 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none bg-white dark:bg-brand-800 text-brand-900 dark:text-brand-50 text-sm transition-all'
 
 const ROLE_LABELS = {
@@ -51,21 +52,53 @@ function formatDate(value) {
   }
 }
 
+function pageNumbers(current, total) {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i)
+  const pages = new Set([0, total - 1, current, current - 1, current + 1])
+  return [...pages].filter(p => p >= 0 && p < total).sort((a, b) => a - b)
+}
+
 export function StaffPage() {
   const currentUser = useAuthStore(state => state.user)
   const queryClient = useQueryClient()
+  const [keywordInput, setKeywordInput] = useState('')
   const [keyword, setKeyword] = useState('')
   const [roleFilter, setRoleFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
+  const [page, setPage] = useState(0)
+  const [size, setSize] = useState(10)
   const [form, setForm] = useState(null)
   const [passwordForm, setPasswordForm] = useState(null)
   const [showPassword, setShowPassword] = useState(false)
   const [confirmLock, setConfirmLock] = useState(null)
   const [error, setError] = useState('')
 
-  const { data: allStaffs = [], isLoading } = useQuery({
-    queryKey: ['staffs'],
-    queryFn: () => userApi.list(),
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setKeyword(keywordInput.trim())
+      setPage(0)
+    }, 400)
+    return () => clearTimeout(timer)
+  }, [keywordInput])
+
+  const listParams = useMemo(() => {
+    const params = { page, size }
+    if (keyword) params.keyword = keyword
+    if (roleFilter) params.role = roleFilter
+    if (statusFilter === 'active') params.active = true
+    if (statusFilter === 'inactive') params.active = false
+    return params
+  }, [page, size, keyword, roleFilter, statusFilter])
+
+  const { data, isLoading, isFetching } = useQuery({
+    queryKey: ['staffs', listParams],
+    queryFn: () => userApi.list(listParams),
+    placeholderData: (prev) => prev,
+  })
+
+  const { data: statsData } = useQuery({
+    queryKey: ['staffs-stats'],
+    queryFn: userApi.stats,
   })
 
   const { data: roles = [] } = useQuery({
@@ -73,23 +106,19 @@ export function StaffPage() {
     queryFn: userApi.roles,
   })
 
-  const staffs = useMemo(() => {
-    const q = keyword.trim().toLowerCase()
-    return allStaffs.filter(staff => {
-      const matchKeyword = !q
-        || staff.fullName?.toLowerCase().includes(q)
-        || staff.username?.toLowerCase().includes(q)
-        || staff.phone?.toLowerCase().includes(q)
-      const matchRole = !roleFilter || staff.role === roleFilter
-      const matchStatus = statusFilter === 'active' ? staff.active
-        : statusFilter === 'inactive' ? !staff.active
-        : true
-      return matchKeyword && matchRole && matchStatus
-    })
-  }, [allStaffs, keyword, roleFilter, statusFilter])
+  const staffs = data?.content || []
+  const totalPages = data?.totalPages || 0
+  const totalElements = data?.totalElements || 0
+  const pages = pageNumbers(page, totalPages)
+  const stats = {
+    total: statsData?.total ?? 0,
+    active: statsData?.active ?? 0,
+    locked: statsData?.locked ?? 0,
+  }
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ['staffs'] })
+    queryClient.invalidateQueries({ queryKey: ['staffs-stats'] })
   }
 
   const saveStaff = useMutation({
@@ -114,12 +143,6 @@ export function StaffPage() {
 
   if (currentUser?.role !== 'ADMIN') {
     return <Navigate to="/" replace />
-  }
-
-  const stats = {
-    total: allStaffs.length,
-    active: allStaffs.filter(s => s.active).length,
-    locked: allStaffs.filter(s => !s.active).length,
   }
 
   const submitStaff = (e) => {
@@ -191,21 +214,45 @@ export function StaffPage() {
           <input
             className={`${inputClass} pl-9`}
             placeholder="Tìm theo tên, tài khoản, số điện thoại..."
-            value={keyword}
-            onChange={(e) => setKeyword(e.target.value)}
+            value={keywordInput}
+            onChange={(e) => setKeywordInput(e.target.value)}
           />
         </div>
-        <select className={`${inputClass} lg:w-48`} value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)}>
+        <select
+          className={`${inputClass} lg:w-48`}
+          value={roleFilter}
+          onChange={(e) => { setRoleFilter(e.target.value); setPage(0) }}
+        >
           <option value="">Tất cả vai trò</option>
           {roles.map(role => (
             <option key={role.id} value={role.name}>{roleLabel(role.name)}</option>
           ))}
         </select>
-        <select className={`${inputClass} lg:w-44`} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+        <select
+          className={`${inputClass} lg:w-44`}
+          value={statusFilter}
+          onChange={(e) => { setStatusFilter(e.target.value); setPage(0) }}
+        >
           <option value="">Tất cả trạng thái</option>
           <option value="active">Đang hoạt động</option>
           <option value="inactive">Đã khóa</option>
         </select>
+      </div>
+
+      <div className="flex items-center justify-between text-sm text-brand-600">
+        <p>
+          {isFetching && !isLoading ? 'Đang lọc...' : `${totalElements} nhân viên`}
+        </p>
+        <div className="flex items-center gap-2">
+          <span>Mỗi trang</span>
+          <select
+            className="h-9 px-2 border border-brand-200 rounded-lg bg-white"
+            value={size}
+            onChange={(e) => { setSize(Number(e.target.value)); setPage(0) }}
+          >
+            {PAGE_SIZES.map(n => <option key={n} value={n}>{n}</option>)}
+          </select>
+        </div>
       </div>
 
       <div className="bg-white rounded-xl border border-brand-200 overflow-hidden">
@@ -300,6 +347,42 @@ export function StaffPage() {
               )}
             </tbody>
           </table>
+        </div>
+      </div>
+
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+        <p className="text-sm text-brand-600">
+          Trang {totalPages === 0 ? 0 : page + 1} / {Math.max(totalPages, 1)}
+        </p>
+        <div className="flex items-center gap-1">
+          <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage(p => Math.max(0, p - 1))}>
+            <ChevronLeft size={16} />
+          </Button>
+          {pages.map((p, index) => {
+            const prev = pages[index - 1]
+            return (
+              <React.Fragment key={p}>
+                {prev != null && p - prev > 1 && <span className="px-1 text-brand-400">...</span>}
+                <button
+                  type="button"
+                  onClick={() => setPage(p)}
+                  className={`h-9 min-w-9 px-2 rounded-lg text-sm border ${
+                    p === page ? 'bg-brand-600 text-white border-brand-600' : 'bg-white border-brand-200 text-brand-700'
+                  }`}
+                >
+                  {p + 1}
+                </button>
+              </React.Fragment>
+            )
+          })}
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={page >= totalPages - 1 || totalPages === 0}
+            onClick={() => setPage(p => p + 1)}
+          >
+            <ChevronRight size={16} />
+          </Button>
         </div>
       </div>
 
