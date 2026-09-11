@@ -3,12 +3,12 @@ import { cn } from "../lib/utils"
 
 const Button = React.forwardRef(({ className, variant = "default", size = "default", ...props }, ref) => {
   const variants = {
-    default: "bg-brand-600 text-white hover:bg-brand-700 shadow-sm",
+    default: "bg-brand-600 dark:bg-amber-700 text-white hover:bg-brand-700 dark:hover:bg-amber-600 shadow-sm",
     destructive: "bg-red-500 text-white hover:bg-red-600 shadow-sm",
-    outline: "border border-brand-200 bg-white hover:bg-brand-100 text-brand-700",
-    secondary: "bg-brand-100 text-brand-900 hover:bg-brand-200",
-    ghost: "hover:bg-brand-100 text-brand-700",
-    link: "text-brand-900 underline-offset-4 hover:underline",
+    outline: "border border-brand-200 dark:border-brand-700 bg-white dark:bg-brand-800 hover:bg-brand-100 dark:hover:bg-brand-700 text-brand-700 dark:text-brand-200",
+    secondary: "bg-brand-100 dark:bg-brand-800 text-brand-900 dark:text-brand-100 hover:bg-brand-200 dark:hover:bg-brand-700",
+    ghost: "hover:bg-brand-100 dark:hover:bg-brand-800 text-brand-700 dark:text-brand-200",
+    link: "text-brand-900 dark:text-brand-300 underline-offset-4 hover:underline",
   }
 
   const sizes = {

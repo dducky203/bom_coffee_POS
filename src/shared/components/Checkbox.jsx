@@ -17,7 +17,7 @@ export function Checkbox({ checked, onChange, label, description, disabled, clas
           disabled={disabled}
           className="sr-only peer"
         />
-        <div className="w-5 h-5 rounded-lg border-2 border-brand-300 dark:border-brand-600 bg-white dark:bg-brand-900 peer-checked:bg-gradient-to-r peer-checked:from-brand-600 peer-checked:to-brand-700 peer-checked:border-brand-600 dark:peer-checked:border-brand-600 flex items-center justify-center text-white transition-all shadow-sm group-hover:border-brand-400">
+        <div className="w-5 h-5 rounded-lg border-2 border-brand-300 dark:border-brand-700 bg-white dark:bg-brand-800 peer-checked:bg-gradient-to-r peer-checked:from-brand-600 peer-checked:to-brand-700 peer-checked:border-brand-600 dark:peer-checked:border-brand-600 flex items-center justify-center text-white transition-all shadow-sm group-hover:border-brand-400">
           <Check size={13} strokeWidth={3} className={checked ? "block" : "hidden"} />
         </div>
       </div>

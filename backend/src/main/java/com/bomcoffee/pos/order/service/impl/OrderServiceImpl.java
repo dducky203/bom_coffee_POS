@@ -34,9 +34,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -55,35 +57,37 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public Order getOrderById(Long id) {
-        Order order = orderRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Order", id));
+        Order order = loadOrderGraph(id);
         initializeOrder(order);
         return order;
     }
 
     @Override
     public Order getActiveOrderByTable(Long tableId) {
-        Order order = orderRepository.findByTableIdAndStatus(tableId, OrderStatus.OPEN).orElse(null);
+        Order order = getOpenOrderGraphByTable(tableId);
         initializeOrder(order);
         return order;
     }
 
     @Override
     public Order getRecentCompletedOrderByTable(Long tableId, int withinMinutes) {
-        LocalDateTime since = LocalDateTime.now().minusMinutes(withinMinutes);
+        java.time.LocalDateTime since = java.time.LocalDateTime.now().minusMinutes(withinMinutes);
         List<Order> recentOrders = orderRepository.findRecentCompletedOrdersByTable(tableId, since);
         if (recentOrders.isEmpty()) {
             return null;
         }
-        Order order = recentOrders.get(0);
+        Order order = loadOrderGraph(recentOrders.get(0).getId());
         initializeOrder(order);
         return order;
     }
 
     @Override
     public Order createOrder(CreateOrderRequest req, User currentUser) {
-        return orderRepository.findByTableIdAndStatus(req.getTableId(), OrderStatus.OPEN)
-                .orElseGet(() -> createNewOrder(req.getTableId(), req.getPreviousOrderId(), currentUser));
+        Order existing = getOpenOrderGraphByTable(req.getTableId());
+        if (existing != null) {
+            return existing;
+        }
+        return createNewOrder(req.getTableId(), req.getPreviousOrderId(), currentUser);
     }
 
     @Override
@@ -91,17 +95,15 @@ public class OrderServiceImpl implements OrderService {
         if (req.getItems() == null || req.getItems().isEmpty()) {
             throw new BusinessException("Chưa có món trong order", "EMPTY_ORDER");
         }
-        Order order = orderRepository.findByTableIdAndStatus(req.getTableId(), OrderStatus.OPEN)
-                .orElseGet(() -> createNewOrder(req.getTableId(), null, currentUser));
-        applyCustomerName(order, req.getCustomerName());
-        orderRepository.save(order);
-        for (AddItemRequest item : req.getItems()) {
-            addItemToOrder(order.getId(), item, currentUser);
+        Order order = getOpenOrderGraphByTable(req.getTableId());
+        if (order == null) {
+            order = createNewOrder(req.getTableId(), null, currentUser);
         }
+        applyCustomerName(order, req.getCustomerName());
+        addItemsToOrder(order, req.getItems(), currentUser);
         attachOrphanBilliardSessions(order);
         pruneStaleBilliardSessions(order);
         if (req.isPayNow()) {
-            // For immediate payment during submit, create a single payment detail
             CheckoutRequest checkout = new CheckoutRequest();
             checkout.setDiscountAmount(BigDecimal.ZERO);
             checkout.setCustomerName(req.getCustomerName());
@@ -120,7 +122,6 @@ public class OrderServiceImpl implements OrderService {
         RestaurantTable table = tableRepository.findById(tableId)
                 .orElseThrow(() -> new ResourceNotFoundException("Table", tableId));
 
-        // Validate previousOrderId if provided
         Order previousOrder = null;
         if (previousOrderId != null) {
             previousOrder = orderRepository.findById(previousOrderId)
@@ -166,22 +167,88 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public OrderItem addItemToOrder(Long orderId, AddItemRequest req, User currentUser) {
-        Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new ResourceNotFoundException("Order", orderId));
+        Order order = loadOrderGraph(orderId);
+        List<OrderItem> saved = addItemsToOrder(order, List.of(req), currentUser);
+        return saved.get(0);
+    }
+
+    private List<OrderItem> addItemsToOrder(Order order, List<AddItemRequest> reqs, User currentUser) {
         if (order.getStatus() != OrderStatus.OPEN) {
             throw new BusinessException("Đơn hàng đã đóng", "ORDER_CLOSED");
         }
+        if (reqs == null || reqs.isEmpty()) {
+            return List.of();
+        }
 
-        Product product = productRepository.findById(req.getProductId())
-                .orElseThrow(() -> new ResourceNotFoundException("Product", req.getProductId()));
+        Set<Long> productIds = reqs.stream().map(AddItemRequest::getProductId).collect(Collectors.toSet());
+        Map<Long, Product> products = productRepository.findAllById(productIds).stream()
+                .collect(Collectors.toMap(Product::getId, p -> p));
+
+        Set<Long> toppingIds = reqs.stream()
+                .map(AddItemRequest::getToppingIds)
+                .filter(Objects::nonNull)
+                .flatMap(List::stream)
+                .collect(Collectors.toSet());
+        Map<Long, Topping> toppingsById = toppingIds.isEmpty()
+                ? Map.of()
+                : toppingRepository.findAllById(toppingIds).stream()
+                        .filter(Topping::isActive)
+                        .collect(Collectors.toMap(Topping::getId, t -> t, (a, b) -> a));
+
+        String updatedBy = currentUser != null ? currentUser.getUsername() : null;
+        List<OrderItem> toSave = new ArrayList<>(reqs.size());
+        for (AddItemRequest req : reqs) {
+            toSave.add(buildOrderItem(order, req, products, toppingsById, updatedBy));
+        }
+
+        List<OrderItem> saved = orderItemRepository.saveAll(toSave);
+        if (order.getItems() == null) {
+            order.setItems(new ArrayList<>());
+        }
+        order.getItems().addAll(saved);
+        if (order.getDiscountAmount() == null) {
+            order.setDiscountAmount(BigDecimal.ZERO);
+        }
+        order.recalculate();
+        orderRepository.save(order);
+
+        for (OrderItem item : saved) {
+            Product product = item.getProduct();
+            notificationService.broadcastKdsUpdate(
+                KdsNotificationDTO.builder()
+                    .type("NEW_ITEM")
+                    .orderId(order.getId())
+                    .tableId(order.getTable().getId())
+                    .tableName(order.getTable().getName())
+                    .itemId(item.getId())
+                    .productName(product.getName())
+                    .quantity(item.getQuantity())
+                    .note(item.getNote())
+                    .build()
+            );
+        }
+        return saved;
+    }
+
+    private OrderItem buildOrderItem(
+            Order order,
+            AddItemRequest req,
+            Map<Long, Product> products,
+            Map<Long, Topping> toppingsById,
+            String updatedBy) {
+        Product product = products.get(req.getProductId());
+        if (product == null) {
+            throw new ResourceNotFoundException("Product", req.getProductId());
+        }
 
         int ice = normalizePercent(req.getIcePercent(), product.isHasDrinkOptions());
         int sugar = normalizePercent(req.getSugarPercent(), product.isHasDrinkOptions());
 
-        List<Topping> toppings = new ArrayList<>();
+        List<Topping> toppings = List.of();
         if (req.getToppingIds() != null && !req.getToppingIds().isEmpty()) {
-            toppings = toppingRepository.findAllById(req.getToppingIds()).stream()
-                    .filter(Topping::isActive)
+            toppings = req.getToppingIds().stream()
+                    .map(toppingsById::get)
+                    .filter(Objects::nonNull)
                     .toList();
         }
 
@@ -200,41 +267,20 @@ public class OrderServiceImpl implements OrderService {
         item.setIcePercent(product.isHasDrinkOptions() ? ice : null);
         item.setSugarPercent(product.isHasDrinkOptions() ? sugar : null);
         item.setStatus(OrderItemStatus.PENDING);
-        item.setUpdatedBy(currentUser != null ? currentUser.getUsername() : null);
-        OrderItem saved = orderItemRepository.save(item);
-
-        if (order.getItems() == null) {
-            order.setItems(new ArrayList<>());
-        }
-        order.getItems().add(saved);
-        if (order.getDiscountAmount() == null) {
-            order.setDiscountAmount(BigDecimal.ZERO);
-        }
-        order.recalculate();
-        orderRepository.save(order);
-
-        notificationService.broadcastKdsUpdate(
-            KdsNotificationDTO.builder()
-                .type("NEW_ITEM")
-                .orderId(order.getId())
-                .tableId(order.getTable().getId())
-                .tableName(order.getTable().getName())
-                .itemId(saved.getId())
-                .productName(product.getName())
-                .quantity(req.getQuantity())
-                .note(note)
-                .build()
-        );
-
-        return saved;
+        item.setUpdatedBy(updatedBy);
+        return item;
     }
 
     @Override
     public void removeItemFromOrder(Long orderId, Long itemId) {
-        Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new ResourceNotFoundException("Order", orderId));
-        OrderItem item = orderItemRepository.findById(itemId)
-                .orElseThrow(() -> new ResourceNotFoundException("OrderItem", itemId));
+        Order order = loadOrderGraph(orderId);
+        OrderItem item = order.getItems() == null ? null : order.getItems().stream()
+                .filter(i -> i.getId().equals(itemId))
+                .findFirst()
+                .orElse(null);
+        if (item == null) {
+            throw new ResourceNotFoundException("OrderItem", itemId);
+        }
 
         order.getItems().remove(item);
         orderItemRepository.delete(item);
@@ -244,9 +290,28 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public List<Order> getAllOpenOrders() {
-        List<Order> orders = orderRepository.findByStatus(OrderStatus.OPEN);
+        List<Order> orders = orderRepository.findByStatusWithItems(OrderStatus.OPEN);
+        if (!orders.isEmpty()) {
+            orderRepository.findWithBilliardSessionsByIdIn(
+                    orders.stream().map(Order::getId).toList());
+        }
         orders.forEach(this::initializeOrder);
         return orders;
+    }
+
+    private Order loadOrderGraph(Long id) {
+        Order order = orderRepository.findByIdWithItems(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Order", id));
+        orderRepository.findByIdWithBilliardSessions(id);
+        return order;
+    }
+
+    private Order getOpenOrderGraphByTable(Long tableId) {
+        Order order = orderRepository.findByTableIdAndStatusWithItems(tableId, OrderStatus.OPEN).orElse(null);
+        if (order != null) {
+            orderRepository.findByIdWithBilliardSessions(order.getId());
+        }
+        return order;
     }
 
     private int normalizePercent(Integer value, boolean drinkOptions) {
@@ -279,20 +344,6 @@ public class OrderServiceImpl implements OrderService {
         if (order == null) {
             return;
         }
-        if (order.getTable() != null) {
-            order.getTable().getName();
-        }
-        if (order.getStaff() != null) {
-            order.getStaff().getFullName();
-        }
-        order.getItems().forEach(item -> {
-            if (item.getProduct() != null) {
-                item.getProduct().getName();
-            }
-        });
-        if (order.getBilliardSessions() != null) {
-            order.getBilliardSessions().size();
-        }
         pruneStaleBilliardSessions(order);
     }
 
@@ -305,12 +356,16 @@ public class OrderServiceImpl implements OrderService {
         if (orphans.isEmpty()) {
             return;
         }
-        int nextNo = billiardSessionRepository.findByOrderIdOrderBySessionNoAsc(order.getId()).size() + 1;
+        int nextNo = (order.getBilliardSessions() == null ? 0 : order.getBilliardSessions().size()) + 1;
+        if (order.getBilliardSessions() == null) {
+            order.setBilliardSessions(new ArrayList<>());
+        }
         for (BilliardSession session : orphans) {
             session.setOrder(order);
             session.setSessionNo(nextNo++);
-            billiardSessionRepository.save(session);
+            order.getBilliardSessions().add(session);
         }
+        billiardSessionRepository.saveAll(orphans);
         order.recalculate();
         orderRepository.save(order);
     }
@@ -320,7 +375,7 @@ public class OrderServiceImpl implements OrderService {
                 || order.getBilliardSessions() == null || order.getCreatedAt() == null) {
             return;
         }
-        LocalDateTime cutoff = order.getCreatedAt().minusMinutes(2);
+        java.time.LocalDateTime cutoff = order.getCreatedAt().minusMinutes(2);
         List<BilliardSession> stale = order.getBilliardSessions().stream()
                 .filter(session -> session.getStatus() == BilliardSessionStatus.FINISHED)
                 .filter(session -> session.getStartTime() != null && session.getStartTime().isBefore(cutoff))
@@ -330,9 +385,9 @@ public class OrderServiceImpl implements OrderService {
         }
         for (BilliardSession session : stale) {
             session.setOrder(null);
-            billiardSessionRepository.save(session);
-            order.getBilliardSessions().remove(session);
         }
+        billiardSessionRepository.saveAll(stale);
+        order.getBilliardSessions().removeAll(stale);
         order.recalculate();
         orderRepository.save(order);
     }

@@ -5,6 +5,38 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    /* Bom Coffee - Warm Artisan Coffee Palette (Light Mode) */
+    --brand-50: 253 248 246;   /* #fdf8f6: Soft warm cream background */
+    --brand-100: 245 238 234;  /* #f5eeeA: Warm cream pill / light hover */
+    --brand-200: 234 221 215;  /* #eaddd7: Soft coffee-toned card border */
+    --brand-300: 220 202 194;  /* #dccec2: Secondary divider / border */
+    --brand-400: 178 153 140;  /* #b2998c: Subtle placeholder / muted label */
+    --brand-500: 146 112 95;   /* #92705f: Warm secondary coffee label */
+    --brand-600: 120 84 65;    /* #785441: Primary roasted coffee accent */
+    --brand-700: 98 67 51;     /* #624333: Deep coffee button hover / active */
+    --brand-800: 68 45 34;     /* #442d22: Deep coffee text */
+    --brand-850: 52 34 25;     /* #342219: Very dark coffee text */
+    --brand-900: 38 24 17;     /* #261811: Deepest espresso text */
+    --brand-950: 24 15 10;     /* #180f0a: Deepest dark tone */
+  }
+
+  .dark {
+    /* Sleek Obsidian & Caramel Espresso Palette (Dark Mode) */
+    --brand-50: 250 250 252;   /* #fafafc: Bright crisp heading & title text */
+    --brand-100: 240 240 245;  /* #f0f0f5: High-contrast title text */
+    --brand-200: 220 220 228;  /* #dcdce4: Main body text, readable & soft */
+    --brand-300: 175 175 188;  /* #afafbc: Secondary text & description */
+    --brand-400: 135 135 148;  /* #878794: Muted label, timestamps, placeholders */
+    --brand-500: 217 142 94;   /* #d98e5e: Warm caramel coffee accent */
+    --brand-600: 194 120 74;   /* #c2784a: Rich espresso-caramel primary accent */
+    --brand-700: 48 48 56;     /* #303038: Crisp, subtle dark borders & dividers */
+    --brand-800: 30 30 35;     /* #1e1e23: Elevated cards, inputs, dropdowns */
+    --brand-850: 24 24 28;     /* #18181c: Intermediate surface (KDS, cart sheet) */
+    --brand-900: 18 18 21;     /* #121215: Sleek dark obsidian page background */
+    --brand-950: 11 11 13;     /* #0b0b0d: Deepest backdrop & modal overlay */
+  }
+
   body {
     @apply bg-brand-50 text-brand-900 font-sans antialiased selection:bg-accent selection:text-white transition-colors duration-300;
   }
@@ -12,6 +44,16 @@
   .dark body {
     @apply bg-brand-900 text-brand-50;
   }
+}
+
+/* Elegant Caramel-Espresso Gradient in Dark Mode for primary buttons & active badges */
+.dark .from-brand-600 {
+  --tw-gradient-from: #c2784a var(--tw-gradient-from-position);
+  --tw-gradient-to: rgb(194 120 74 / 0) var(--tw-gradient-to-position);
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to);
+}
+.dark .to-brand-700 {
+  --tw-gradient-to: #9c552a var(--tw-gradient-to-position);
 }
 
 @layer utilities {

@@ -8,6 +8,7 @@ import com.bomcoffee.pos.product.controller.ProductController.ProductRequest;
 import com.bomcoffee.pos.product.entity.Product;
 import com.bomcoffee.pos.product.repository.ProductRepository;
 import com.bomcoffee.pos.product.service.ProductService;
+import com.bomcoffee.pos.upload.CloudinaryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,6 +22,7 @@ public class ProductServiceImpl implements ProductService {
 
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
+    private final CloudinaryService cloudinaryService;
 
     @Override
     public List<Product> getAllProducts(Long categoryId, boolean includeInactive) {
@@ -32,11 +34,6 @@ public class ProductServiceImpl implements ProductService {
         } else {
             products = includeInactive ? productRepository.findAll() : productRepository.findByActiveTrue();
         }
-        products.forEach(p -> {
-            if (p.getCategory() != null) {
-                p.getCategory().getName();
-            }
-        });
         return products;
     }
 
@@ -76,7 +73,17 @@ public class ProductServiceImpl implements ProductService {
         }
         if (req.getName() != null) product.setName(req.getName());
         if (req.getBasePrice() != null) product.setBasePrice(req.getBasePrice());
-        if (req.getImageUrl() != null) product.setImageUrl(req.getImageUrl());
+
+        // Handle image update/removal
+        String newImageUrl = req.getImageUrl();
+        if (newImageUrl != null && newImageUrl.isBlank()) {
+            newImageUrl = null;
+        }
+        if (product.getImageUrl() != null && !product.getImageUrl().equals(newImageUrl)) {
+            cloudinaryService.deleteImage(product.getImageUrl());
+        }
+        product.setImageUrl(newImageUrl);
+
         if (req.getDescription() != null) product.setDescription(req.getDescription());
         if (req.getActive() != null) product.setActive(req.getActive());
         if (req.getHasDrinkOptions() != null) product.setHasDrinkOptions(req.getHasDrinkOptions());

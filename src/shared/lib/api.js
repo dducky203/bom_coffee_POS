@@ -60,7 +60,7 @@ api.interceptors.response.use(
     err.status = error.response?.status
 
     // Only show error toast if it's not a 401 redirecting to login (to avoid double noise)
-    if (err.status !== 401 || window.location.pathname !== '/login') {
+    if (!error.config?.skipErrorToast && (err.status !== 401 || window.location.pathname !== '/login')) {
       toast.error(message)
     }
 
@@ -93,7 +93,13 @@ export const categoryApi = {
 }
 
 export const toppingApi = {
-  list: (includeInactive = false) => api.get('/toppings', { params: { includeInactive } }),
+  list: async (includeInactive = false) => {
+    const data = await api.get('/toppings', { params: { includeInactive } })
+    if (Array.isArray(data)) {
+      return [...data].sort((a, b) => (Number(a.sortOrder ?? 0) - Number(b.sortOrder ?? 0)) || (Number(a.id) - Number(b.id)))
+    }
+    return data
+  },
   create: (payload) => api.post('/toppings', payload),
   update: (id, payload) => api.put(`/toppings/${id}`, payload),
   remove: (id) => api.delete(`/toppings/${id}`),
@@ -105,6 +111,7 @@ export const uploadApi = {
     form.append('file', file)
     return api.post('/uploads/image', form)
   },
+  delete: (url) => api.delete('/uploads/image', { params: { url } }),
 }
 
 export const productApi = {
@@ -129,6 +136,8 @@ export const orderApi = {
 export const kdsApi = {
   queue: (all = false) => api.get('/kds/queue', { params: all ? { all: true } : {} }),
   updateStatus: (itemId, status) => api.patch(`/kds/items/${itemId}/status`, { status }),
+  updateStatuses: (itemIds, status) =>
+    Promise.all(itemIds.map(id => api.patch(`/kds/items/${id}/status`, { status }))),
 }
 
 export const billiardApi = {

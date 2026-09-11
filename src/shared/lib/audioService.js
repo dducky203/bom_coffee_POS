@@ -229,10 +229,15 @@ function announcePendingQueue(groups = []) {
   })
 }
 
-function remindPending(count) {
-  if (!count) return
+function remindPending(orderCount, itemCount) {
+  const orders = Number(orderCount) || 0
+  const dishes = Number(itemCount) || 0
+  if (!orders && !dishes) return
   if (draining || queue.length) return
-  enqueue(`Nhắc nhở. Còn ${count} đơn đang chờ pha chế.`, { playAlert: true, replaceReminders: true })
+  enqueue(
+    `Nhắc nhở. Còn ${orders} đơn, ${dishes} món đang chờ pha chế.`,
+    { playAlert: true, replaceReminders: true }
+  )
 }
 
 function setKdsActive(active) {

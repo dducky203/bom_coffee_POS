@@ -26,13 +26,7 @@ public class BilliardPricingServiceImpl implements BilliardPricingService {
 
     @Override
     public List<BilliardPricing> getAll() {
-        List<BilliardPricing> prices = pricingRepository.findAll();
-        prices.forEach(p -> {
-            if (p.getTable() != null) {
-                p.getTable().getName();
-            }
-        });
-        return prices;
+        return pricingRepository.findAll();
     }
 
     @Override

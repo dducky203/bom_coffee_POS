@@ -145,6 +145,7 @@ export function Layout() {
             Giao diện {isDark ? 'Tối' : 'Sáng'}
           </span>
           <button
+            type="button"
             onClick={() => setIsDark(v => !v)}
             className={`w-9 h-5 rounded-full transition-colors p-0.5 relative flex items-center ${isDark ? 'bg-brand-600' : 'bg-brand-200'}`}
           >
@@ -283,7 +284,7 @@ export function Layout() {
 
       {/* Main Content Viewport */}
       <main className="flex-1 overflow-hidden flex flex-col relative">
-        <div className={`flex-1 p-4 md:p-6 lg:p-8 ${location.pathname.startsWith('/kds') ? 'overflow-hidden flex flex-col min-h-0' : 'overflow-y-auto custom-scrollbar'}`}>
+        <div className={`flex-1 ${location.pathname.startsWith('/kds') ? 'p-2 sm:p-3 md:p-4 overflow-hidden flex flex-col min-h-0' : 'p-4 md:p-6 lg:p-8 overflow-y-auto custom-scrollbar'}`}>
           <Outlet />
         </div>
       </main>

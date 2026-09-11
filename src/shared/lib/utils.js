@@ -31,25 +31,46 @@ export function formatDuration(seconds) {
   return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
 }
 
-export function formatDateTime(value) {
-  if (!value) return '—'
+export function parseServerDate(value) {
+  if (!value) return null
+  if (value instanceof Date) return value
+  if (typeof value === 'number') return new Date(value)
+  if (typeof value === 'string') {
+    const trimmed = value.trim().replace(' ', 'T')
+    // Nếu chuỗi ISO không có timezone (ví dụ: "2026-09-11T02:28:26"),
+    // server Render chạy múi giờ UTC nên ta gắn 'Z' để browser chuyển sang giờ địa phương (+07:00)
+    if (!trimmed.endsWith('Z') && !trimmed.includes('+') && !trimmed.slice(10).includes('-')) {
+      const parsedUtc = new Date(`${trimmed}Z`)
+      if (!Number.isNaN(parsedUtc.getTime())) {
+        return parsedUtc
+      }
+    }
+    const parsed = new Date(trimmed)
+    if (!Number.isNaN(parsed.getTime())) {
+      return parsed
+    }
+  }
   const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return '—'
+  return Number.isNaN(date.getTime()) ? null : date
+}
+
+export function formatDateTime(value) {
+  const date = parseServerDate(value)
+  if (!date) return '—'
   return format(date, 'dd/MM/yyyy HH:mm', { locale: vi })
 }
 
 export function formatTimeOnly(value) {
-  if (!value) return '—'
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return '—'
+  const date = parseServerDate(value)
+  if (!date) return '—'
   return format(date, 'HH:mm:ss')
 }
 
 export function durationSecondsBetween(start, end) {
   if (!start || !end) return 0
-  const from = new Date(start).getTime()
-  const to = new Date(end).getTime()
-  if (Number.isNaN(from) || Number.isNaN(to)) return 0
+  const from = parseServerDate(start)?.getTime()
+  const to = parseServerDate(end)?.getTime()
+  if (!from || !to) return 0
   return Math.max(0, Math.floor((to - from) / 1000))
 }
 

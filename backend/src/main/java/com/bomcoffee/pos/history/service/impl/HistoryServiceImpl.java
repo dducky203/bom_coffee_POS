@@ -7,7 +7,6 @@ import com.bomcoffee.pos.history.service.HistoryService;
 import com.bomcoffee.pos.order.entity.Order;
 import com.bomcoffee.pos.order.entity.OrderItem;
 import com.bomcoffee.pos.order.repository.OrderRepository;
-import com.bomcoffee.pos.payment.entity.Payment;
 import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
@@ -36,14 +35,21 @@ public class HistoryServiceImpl implements HistoryService {
 
     @Override
     public Order getOrderDetailById(Long id) {
-        Order order = orderRepository.findById(id)
+        Order order = orderRepository.findByIdWithItems(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Order", id));
-        initializeDetail(order);
+        orderRepository.findByIdWithBilliardSessions(id);
+        orderRepository.findByIdWithPayments(id);
         return order;
     }
 
     private Specification<Order> buildSpec(HistorySearchCriteria criteria) {
         return (root, query, cb) -> {
+            if (query.getResultType() != Long.class && query.getResultType() != long.class) {
+                root.fetch("table", JoinType.LEFT);
+                root.fetch("staff", JoinType.LEFT);
+                root.fetch("previousOrder", JoinType.LEFT);
+                query.distinct(true);
+            }
             List<Predicate> predicates = new ArrayList<>();
             predicates.add(root.get("status").in(
                     OrderStatus.COMPLETED, OrderStatus.PAID, OrderStatus.CANCELLED));
@@ -135,28 +141,6 @@ public class HistoryServiceImpl implements HistoryService {
                     session.getTable().getName();
                 }
             }
-        }
-    }
-
-    private void initializeDetail(Order order) {
-        initializeBasicOrder(order);
-        if (order.getPreviousOrder() != null) {
-            order.getPreviousOrder().getId();
-        }
-        for (OrderItem item : order.getItems()) {
-            if (item.getProduct() != null) {
-                item.getProduct().getName();
-            }
-        }
-        if (order.getPayments() != null) {
-            for (Payment payment : order.getPayments()) {
-                if (payment.getCashier() != null) {
-                    payment.getCashier().getFullName();
-                }
-            }
-        }
-        if (order.getBilliardSessions() != null) {
-            order.getBilliardSessions().size();
         }
     }
 }

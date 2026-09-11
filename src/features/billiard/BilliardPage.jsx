@@ -1,23 +1,27 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { billiardApi } from '../../shared/lib/api'
 import { tablesQuery } from '../../shared/lib/queries'
-import { Card, CardContent } from '../../shared/components/Card'
-import { Button } from '../../shared/components/Button'
-import { durationSecondsBetween, formatCurrency, formatDuration, formatPlayDuration, formatTimeOnly } from '../../shared/lib/utils'
-import { Play, Square, Clock } from 'lucide-react'
+import { durationSecondsBetween, formatCurrency, formatDuration, formatPlayDuration, formatTimeOnly, parseServerDate } from '../../shared/lib/utils'
+import { Play, Square, Clock, Coffee, Settings2 } from 'lucide-react'
 import { ConfirmModal } from '../../shared/components/ConfirmModal'
+import { Button } from '../../shared/components/Button'
 import toast from 'react-hot-toast'
 
 export function BilliardPage() {
   const queryClient = useQueryClient()
+  const navigate = useNavigate()
   const [now, setNow] = useState(new Date())
   const [error, setError] = useState('')
   const [confirmTableId, setConfirmTableId] = useState(null)
 
   const { data: tables = [], isLoading } = useQuery(tablesQuery)
 
-  const billiardTables = tables.filter(t => t.type === 'BILLIARD')
+  const billiardTables = useMemo(
+    () => tables.filter(t => t.type === 'BILLIARD'),
+    [tables]
+  )
 
   const { data: sessions = [] } = useQuery({
     queryKey: ['billiard-sessions', billiardTables.map(t => t.id).join(',')],
@@ -72,74 +76,137 @@ export function BilliardPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-brand-900 dark:text-brand-50">Quản lý giờ Bi-a</h1>
-        <p className="text-brand-500 dark:text-brand-400">Theo dõi thời gian chơi và tính tiền</p>
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-brand-900 dark:text-brand-50">Quản lý giờ Bi-a</h1>
+          <p className="text-sm text-brand-500 dark:text-brand-400">Theo dõi thời gian chơi và tính tiền</p>
+        </div>
+
+        <Button
+          variant="outline"
+          onClick={() => navigate('/billiard-pricing')}
+          className="rounded-xl h-10 px-3.5 text-xs font-semibold border-brand-200 dark:border-brand-700 text-brand-700 dark:text-brand-300 hover:bg-brand-50"
+        >
+          <Settings2 size={15} className="mr-1.5" /> Bảng giá giờ Bi-a
+        </Button>
       </div>
 
-      {error && <p className="text-red-600">{error}</p>}
-      {isLoading && <p className="text-brand-500">Đang tải bàn bi-a...</p>}
+      {error && <p className="text-red-600 text-sm">{error}</p>}
+      {isLoading && <p className="text-brand-500 text-sm">Đang tải bàn bi-a...</p>}
 
+      {/* Billiard Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {billiardTables.map(table => {
           const activeSession = sessionOf(table.id)
-          const startTime = activeSession?.startTime
+          const startTimeDate = parseServerDate(activeSession?.startTime)
+          const startTime = startTimeDate || activeSession?.startTime
           const endTime = activeSession ? now : null
-          const elapsedSeconds = startTime
-            ? Math.max(0, Math.floor((now.getTime() - new Date(startTime).getTime()) / 1000))
-            : 0
+          const elapsedSeconds = startTimeDate
+            ? Math.max(0, Math.floor((now.getTime() - startTimeDate.getTime()) / 1000))
+            : Number(activeSession?.elapsedSeconds || 0)
           const currentPrice = Number(activeSession?.currentAmount || 0)
 
           return (
-            <Card key={table.id} className={`overflow-hidden transition-all ${activeSession ? 'border-brand-500 shadow-md shadow-brand-500/20' : ''}`}>
-              <div className={`h-2 w-full ${activeSession ? 'bg-brand-500' : 'bg-gray-200'}`} />
-              <CardContent className="p-6">
-                <div className="flex justify-between items-center mb-6">
-                  <h3 className="text-xl font-bold">{table.name}</h3>
-                  <span className={`px-3 py-1 rounded-full text-xs font-semibold ${activeSession ? 'bg-brand-100 text-brand-800' : 'bg-gray-100 text-gray-500'}`}>
+            <div
+              key={table.id}
+              className={`rounded-2xl border bg-white dark:bg-brand-900/60 transition-all overflow-hidden flex flex-col justify-between shadow-sm ${
+                activeSession
+                  ? 'border-brand-500/80 ring-1 ring-brand-500/20 shadow-md'
+                  : 'border-brand-200 dark:border-brand-800'
+              }`}
+            >
+              <div className="p-5 space-y-4 flex-1 flex flex-col justify-between">
+                {/* Header */}
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-2">
+                    <span className="inline-block w-5 h-5 rounded-full bg-zinc-800 text-white text-[11px] font-bold text-center leading-[20px]">
+                      8
+                    </span>
+                    <h3 className="text-lg font-bold text-brand-900 dark:text-brand-50">{table.name}</h3>
+                  </div>
+
+                  <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                    activeSession
+                      ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-200 border border-amber-300/60'
+                      : 'bg-gray-100 dark:bg-brand-800 text-gray-500 dark:text-brand-400'
+                  }`}>
                     {activeSession ? 'Đang chơi' : 'Trống'}
                   </span>
                 </div>
 
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3 text-2xl font-mono justify-center p-4 bg-gray-50 dark:bg-brand-800 rounded-lg">
-                    <Clock size={24} className={activeSession ? 'text-brand-500 animate-pulse' : 'text-gray-400'} />
-                    <span>{formatDuration(elapsedSeconds)}</span>
+                {/* Timer Box */}
+                <div className="flex items-center gap-2.5 text-2xl font-mono justify-center p-3.5 bg-brand-50/80 dark:bg-brand-800/50 rounded-xl border border-brand-100 dark:border-brand-700">
+                  <Clock size={20} className={activeSession ? 'text-brand-600 dark:text-brand-400' : 'text-brand-300'} />
+                  <span className="font-bold tracking-wider text-brand-900 dark:text-brand-50">
+                    {formatDuration(elapsedSeconds)}
+                  </span>
+                </div>
+
+                {/* Details */}
+                <div className="text-xs space-y-2 text-brand-700 dark:text-brand-300">
+                  <div className="flex justify-between items-center">
+                    <span className="text-brand-500">Giờ bắt đầu</span>
+                    <span className="font-mono font-semibold text-brand-900 dark:text-brand-100">
+                      {startTime ? formatTimeOnly(startTime) : '--:--:--'}
+                    </span>
                   </div>
 
-                  <div className="text-sm space-y-1.5 text-brand-700 dark:text-brand-300">
-                    <div className="flex justify-between">
-                      <span>Giờ bắt đầu</span>
-                      <span className="font-semibold font-mono">{startTime ? formatTimeOnly(startTime) : '--:--:--'}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Giờ kết thúc</span>
-                      <span className="font-semibold font-mono">{endTime ? formatTimeOnly(endTime) : '--:--:--'}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Thời gian chơi</span>
-                      <span className="font-semibold">{activeSession ? formatPlayDuration(elapsedSeconds) : '—'}</span>
-                    </div>
-                    <div className="flex justify-between pt-1 border-t border-brand-100 dark:border-brand-700">
-                      <span>Tiền giờ</span>
-                      <span className="font-bold text-brand-900 dark:text-brand-50">{formatCurrency(currentPrice)}</span>
-                    </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-brand-500">Giờ kết thúc</span>
+                    <span className="font-mono font-semibold text-brand-900 dark:text-brand-100">
+                      {endTime ? formatTimeOnly(endTime) : '--:--:--'}
+                    </span>
                   </div>
 
-                  <div className="pt-2">
-                    {!activeSession ? (
-                      <Button onClick={() => startSession.mutate(table.id)} className="w-full gap-2 bg-green-600 hover:bg-green-700">
-                        <Play size={18} /> Bắt đầu
-                      </Button>
-                    ) : (
-                      <Button onClick={() => setConfirmTableId(table.id)} className="w-full gap-2" variant="destructive">
-                        <Square size={18} /> Kết thúc
-                      </Button>
-                    )}
+                  <div className="flex justify-between items-center">
+                    <span className="text-brand-500">Thời gian chơi</span>
+                    <span className="font-semibold text-brand-900 dark:text-brand-100">
+                      {activeSession ? formatPlayDuration(elapsedSeconds) : '—'}
+                    </span>
+                  </div>
+
+                  <div className="flex justify-between items-center pt-2 border-t border-brand-100 dark:border-brand-800">
+                    <span className="font-medium text-brand-600 dark:text-brand-400">Tiền giờ tạm tính</span>
+                    <span className="font-bold text-sm text-brand-900 dark:text-brand-50">
+                      {formatCurrency(currentPrice)}
+                    </span>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+
+                {/* Actions */}
+                <div className="pt-2">
+                  {!activeSession ? (
+                    <Button
+                      onClick={() => startSession.mutate(table.id)}
+                      disabled={startSession.isPending}
+                      className="w-full h-11 gap-2 bg-brand-700 hover:bg-brand-800 text-white font-semibold rounded-xl text-xs"
+                    >
+                      <Play size={16} /> Bắt đầu tính giờ
+                    </Button>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => navigate(`/order/${table.id}`)}
+                        className="h-11 gap-1.5 text-xs font-semibold rounded-xl border-brand-200 text-brand-700 hover:bg-brand-50"
+                      >
+                        <Coffee size={15} /> Gọi nước
+                      </Button>
+
+                      <Button
+                        onClick={() => setConfirmTableId(table.id)}
+                        disabled={stopSession.isPending}
+                        className="h-11 gap-1.5 text-xs font-semibold rounded-xl bg-red-600 hover:bg-red-700 text-white shadow-sm"
+                      >
+                        <Square size={14} /> Kết thúc
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
           )
         })}
       </div>
@@ -158,10 +225,6 @@ export function BilliardPage() {
           const elapsed = durationSecondsBetween(session.startTime, now)
           return `Giờ bắt đầu: ${formatTimeOnly(session.startTime)}\nGiờ kết thúc: ${formatTimeOnly(now)}\nThời gian: ${formatPlayDuration(elapsed)}\nTiền giờ: ${formatCurrency(session.currentAmount)}\n\nChốt phiên này?`
         })()}
-        confirmText="Kết thúc & Tính tiền"
-        cancelText="Hủy"
-        isDestructive={false}
-        isLoading={stopSession.isPending}
       />
     </div>
   )

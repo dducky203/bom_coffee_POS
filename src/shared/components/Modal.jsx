@@ -3,7 +3,7 @@ import { useEffect } from "react"
 import { cn } from "../lib/utils"
 import { X } from "lucide-react"
 
-export function Modal({ isOpen, onClose, title, children, className, subtitle }) {
+export function Modal({ isOpen, onClose, title, children, className, subtitle, footer }) {
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === "Escape" && isOpen) {
@@ -37,7 +37,7 @@ export function Modal({ isOpen, onClose, title, children, className, subtitle })
         className
       )}>
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-brand-100 dark:border-brand-800/80 bg-brand-50/50 dark:bg-brand-900/50">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-brand-100 dark:border-brand-800/80 bg-brand-50/50 dark:bg-brand-850/60 shrink-0">
           <div>
             <h2 className="text-lg font-bold tracking-tight text-brand-900 dark:text-brand-50">
               {title}
@@ -60,6 +60,13 @@ export function Modal({ isOpen, onClose, title, children, className, subtitle })
         <div className="p-6 overflow-y-auto custom-scrollbar flex-1">
           {children}
         </div>
+
+        {/* Sticky/Fixed Footer */}
+        {footer && (
+          <div className="px-6 py-4 border-t border-brand-100 dark:border-brand-800/80 bg-brand-50/70 dark:bg-brand-850/80 shrink-0">
+            {footer}
+          </div>
+        )}
       </div>
     </div>
   )

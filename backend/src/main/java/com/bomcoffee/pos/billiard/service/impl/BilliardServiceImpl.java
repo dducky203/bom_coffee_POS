@@ -27,7 +27,10 @@ import java.time.DayOfWeek;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -113,6 +116,43 @@ public class BilliardServiceImpl implements BilliardService {
     }
 
     @Override
+    public void stopPlayingSessionsForOrder(Order order) {
+        if (order == null || order.getTable() == null) {
+            return;
+        }
+        Long tableId = order.getTable().getId();
+        List<BilliardSession> playing = sessionRepository.findAllByTableIdAndStatus(tableId, BilliardSessionStatus.PLAYING);
+        if (playing.isEmpty()) {
+            return;
+        }
+
+        LocalDateTime endTime = LocalDateTime.now();
+        List<BilliardPricing> prices = pricingRepository.findForTable(tableId);
+        if (order.getBilliardSessions() == null) {
+            order.setBilliardSessions(new ArrayList<>());
+        }
+        for (BilliardSession session : playing) {
+            if (session.getOrder() == null || !order.getId().equals(session.getOrder().getId())) {
+                session.setOrder(order);
+            }
+            if (session.getStatus() != BilliardSessionStatus.FINISHED) {
+                session.setEndTime(endTime);
+                session.setStatus(BilliardSessionStatus.FINISHED);
+                session.setTotalAmount(calculateAmountFrom(prices, session.getStartTime(), endTime));
+            }
+            boolean attached = order.getBilliardSessions().stream().anyMatch(s -> s.getId().equals(session.getId()));
+            if (!attached) {
+                order.getBilliardSessions().add(session);
+            }
+        }
+        sessionRepository.saveAll(playing);
+        if (order.getStatus() == OrderStatus.OPEN) {
+            order.recalculate();
+            orderRepository.save(order);
+        }
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public Map<String, Object> getCurrentSession(Long tableId) {
         return findPlaying(tableId)
@@ -164,12 +204,20 @@ public class BilliardServiceImpl implements BilliardService {
     }
 
     private BigDecimal calculateAmount(Long tableId, LocalDateTime start, LocalDateTime end) {
+        return calculateAmountFrom(pricingRepository.findForTable(tableId), start, end);
+    }
+
+    private BigDecimal calculateAmountFrom(List<BilliardPricing> prices, LocalDateTime start, LocalDateTime end) {
         DayOfWeek dow = start.getDayOfWeek();
         DayType dayType = (dow == DayOfWeek.SATURDAY || dow == DayOfWeek.SUNDAY) ? DayType.WEEKEND : DayType.WEEKDAY;
+        LocalTime time = LocalTime.from(start);
 
-        BigDecimal pricePerHour = pricingRepository
-                .findApplicable(tableId, dayType, LocalTime.from(start))
+        BigDecimal pricePerHour = prices.stream()
+                .filter(p -> p.getDayType() == dayType)
+                .filter(p -> !time.isBefore(p.getStartTime()) && !time.isAfter(p.getEndTime()))
+                .sorted(Comparator.comparing((BilliardPricing p) -> p.getTable() == null ? 1 : 0))
                 .map(BilliardPricing::getPricePerHour)
+                .findFirst()
                 .orElse(BigDecimal.valueOf(80000));
 
         long seconds = Math.max(Duration.between(start, end).getSeconds(), 0);

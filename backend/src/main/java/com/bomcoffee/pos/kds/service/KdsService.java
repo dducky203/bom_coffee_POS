@@ -9,4 +9,5 @@ import java.util.Map;
 public interface KdsService {
     List<OrderItem> getQueue(boolean all, User currentUser);
     OrderItem updateStatus(Long itemId, Map<String, String> body);
+    List<OrderItem> updateStatuses(List<Long> itemIds, String status);
 }

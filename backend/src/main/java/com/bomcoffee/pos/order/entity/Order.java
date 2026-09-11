@@ -8,6 +8,7 @@ import com.bomcoffee.pos.user.entity.User;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.BatchSize;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
@@ -62,16 +63,19 @@ public class Order {
     private LocalDateTime closedAt;
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
+    @BatchSize(size = 50)
     @Builder.Default
     private List<OrderItem> items = new ArrayList<>();
 
     @JsonIgnoreProperties({"order", "hibernateLazyInitializer", "handler"})
     @OneToMany(mappedBy = "order")
+    @BatchSize(size = 50)
     @Builder.Default
     private List<Payment> payments = new ArrayList<>();
 
     @JsonIgnoreProperties({"order", "hibernateLazyInitializer", "handler"})
     @OneToMany(mappedBy = "order")
+    @BatchSize(size = 50)
     @Builder.Default
     private List<BilliardSession> billiardSessions = new ArrayList<>();
 

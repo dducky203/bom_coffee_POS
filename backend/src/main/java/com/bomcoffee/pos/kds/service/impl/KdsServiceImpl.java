@@ -17,9 +17,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -27,77 +27,106 @@ import java.util.Map;
 public class KdsServiceImpl implements KdsService {
 
     private static final ZoneId VN_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
+    private static final List<OrderItemStatus> TODAY_STATUSES =
+            List.of(OrderItemStatus.PENDING, OrderItemStatus.IN_PROGRESS, OrderItemStatus.DONE);
+    private static final List<OrderItemStatus> CARRY_STATUSES =
+            List.of(OrderItemStatus.PENDING, OrderItemStatus.IN_PROGRESS);
 
     private final OrderItemRepository orderItemRepository;
     private final NotificationService notificationService;
 
     @Override
+    @Transactional(readOnly = true)
     public List<OrderItem> getQueue(boolean all, User currentUser) {
         boolean isAdmin = currentUser != null
                 && currentUser.getRole() != null
                 && "ADMIN".equalsIgnoreCase(currentUser.getRole().getName());
         LocalDateTime startOfToday = LocalDate.now(VN_ZONE).atStartOfDay();
 
-        List<OrderItem> items;
         if (all && isAdmin) {
-            items = orderItemRepository.findByStatusIn(
-                    List.of(OrderItemStatus.PENDING, OrderItemStatus.IN_PROGRESS, OrderItemStatus.DONE));
-        } else {
-            items = new ArrayList<>(orderItemRepository.findByStatusInAndCreatedAtGreaterThanEqual(
-                    List.of(OrderItemStatus.PENDING, OrderItemStatus.IN_PROGRESS, OrderItemStatus.DONE),
-                    startOfToday));
-            items.addAll(orderItemRepository.findByStatusInAndCreatedAtLessThan(
-                    List.of(OrderItemStatus.PENDING, OrderItemStatus.IN_PROGRESS),
-                    startOfToday));
+            return orderItemRepository.findByStatusInWithRelations(TODAY_STATUSES);
         }
-        hydrate(items);
-        return items;
-    }
-
-    private void hydrate(List<OrderItem> items) {
-        items.forEach(item -> {
-            if (item.getOrder() != null && item.getOrder().getTable() != null) {
-                item.getOrder().getTable().getName();
-            }
-            if (item.getProduct() != null) {
-                item.getProduct().getName();
-            }
-        });
+        return orderItemRepository.findQueueWithRelations(TODAY_STATUSES, CARRY_STATUSES, startOfToday);
     }
 
     @Override
     public OrderItem updateStatus(Long itemId, Map<String, String> body) {
-        OrderItem item = orderItemRepository.findById(itemId)
-                .orElseThrow(() -> new ResourceNotFoundException("OrderItem", itemId));
+        List<OrderItem> saved = updateStatuses(List.of(itemId), body != null ? body.get("status") : null);
+        return saved.get(0);
+    }
 
-        OrderItemStatus newStatus = OrderItemStatus.valueOf(body.get("status"));
-        OrderItemStatus currentStatus = item.getStatus();
-
-        boolean valid = (currentStatus == OrderItemStatus.PENDING && newStatus == OrderItemStatus.IN_PROGRESS)
-                || (currentStatus == OrderItemStatus.IN_PROGRESS && newStatus == OrderItemStatus.DONE)
-                || (currentStatus == OrderItemStatus.DONE && newStatus == OrderItemStatus.SERVED);
-        if (!valid) {
-            throw new BusinessException("Trạng thái không hợp lệ: " + currentStatus + " → " + newStatus, "INVALID_STATUS_TRANSITION");
+    @Override
+    public List<OrderItem> updateStatuses(List<Long> itemIds, String status) {
+        if (itemIds == null || itemIds.isEmpty()) {
+            throw new BusinessException("Danh sách món trống", "EMPTY_ITEM_IDS");
+        }
+        if (status == null || status.isBlank()) {
+            throw new BusinessException("Thiếu trạng thái", "MISSING_STATUS");
         }
 
-        item.setStatus(newStatus);
-        OrderItem saved = orderItemRepository.save(item);
+        OrderItemStatus newStatus;
+        try {
+            newStatus = OrderItemStatus.valueOf(status.trim().toUpperCase());
+        } catch (IllegalArgumentException ex) {
+            throw new BusinessException("Trạng thái không hợp lệ: " + status, "INVALID_STATUS");
+        }
 
-        notificationService.broadcastKdsUpdate(
-            KdsNotificationDTO.builder()
-                .type("STATUS_UPDATED")
-                .itemId(itemId)
-                .status(newStatus)
-                .build()
-        );
-        notificationService.broadcastTableUpdate(
-                saved.getOrder().getTable().getId(),
-                TableOrderNotificationDTO.builder()
-                    .itemId(itemId)
-                    .status(newStatus)
-                    .build()
-        );
+        List<Long> distinctIds = itemIds.stream().filter(id -> id != null).distinct().toList();
+        if (distinctIds.isEmpty()) {
+            throw new BusinessException("Danh sách món trống", "EMPTY_ITEM_IDS");
+        }
 
+        List<OrderItem> loaded = orderItemRepository.findByIdIn(distinctIds);
+        Map<Long, OrderItem> byId = loaded.stream()
+                .collect(Collectors.toMap(OrderItem::getId, item -> item, (a, b) -> a));
+        if (byId.size() != distinctIds.size()) {
+            Long missingId = distinctIds.stream()
+                    .filter(id -> !byId.containsKey(id))
+                    .findFirst()
+                    .orElse(distinctIds.get(0));
+            throw new ResourceNotFoundException("OrderItem", missingId);
+        }
+
+        List<OrderItem> items = distinctIds.stream().map(byId::get).toList();
+        for (OrderItem item : items) {
+            if (!isValidTransition(item.getStatus(), newStatus)) {
+                throw new BusinessException(
+                        "Trạng thái không hợp lệ: " + item.getStatus() + " → " + newStatus,
+                        "INVALID_STATUS_TRANSITION");
+            }
+            item.setStatus(newStatus);
+        }
+
+        List<OrderItem> saved = orderItemRepository.saveAll(items);
+        notifyStatusUpdated(saved, newStatus);
         return saved;
+    }
+
+    private boolean isValidTransition(OrderItemStatus current, OrderItemStatus next) {
+        return (current == OrderItemStatus.PENDING && next == OrderItemStatus.IN_PROGRESS)
+                || (current == OrderItemStatus.PENDING && next == OrderItemStatus.DONE)
+                || (current == OrderItemStatus.IN_PROGRESS && next == OrderItemStatus.DONE)
+                || (current == OrderItemStatus.DONE && next == OrderItemStatus.SERVED);
+    }
+
+    private void notifyStatusUpdated(List<OrderItem> items, OrderItemStatus newStatus) {
+        for (OrderItem item : items) {
+            notificationService.broadcastKdsUpdate(
+                    KdsNotificationDTO.builder()
+                            .type("STATUS_UPDATED")
+                            .itemId(item.getId())
+                            .status(newStatus)
+                            .build()
+            );
+            if (item.getOrder() != null && item.getOrder().getTable() != null) {
+                notificationService.broadcastTableUpdate(
+                        item.getOrder().getTable().getId(),
+                        TableOrderNotificationDTO.builder()
+                                .itemId(item.getId())
+                                .status(newStatus)
+                                .build()
+                );
+            }
+        }
     }
 }

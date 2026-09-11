@@ -19,6 +19,7 @@ const emptyProduct = {
   basePrice: '',
   description: '',
   imageUrl: '',
+  originalImageUrl: '',
   active: true,
   hasDrinkOptions: true,
 }
@@ -78,33 +79,48 @@ export function MenuPage() {
     ...catalogOptions,
   })
 
+  const sortedToppings = useMemo(() => {
+    return [...toppings].sort((a, b) => (Number(a.sortOrder ?? 0) - Number(b.sortOrder ?? 0)) || (Number(a.id) - Number(b.id)))
+  }, [toppings])
+
   const visibleProducts = useMemo(() => {
     if (categoryFilter === 'ALL') return products
     return products.filter(p => p.category?.id === Number(categoryFilter))
   }, [products, categoryFilter])
 
   const invalidate = () => {
-    queryClient.invalidateQueries({ queryKey: ['categories-admin'] })
-    queryClient.invalidateQueries({ queryKey: ['categories'] })
-    queryClient.invalidateQueries({ queryKey: ['products-admin'] })
-    queryClient.invalidateQueries({ queryKey: ['products'] })
-    queryClient.invalidateQueries({ queryKey: ['toppings-admin'] })
-    queryClient.invalidateQueries({ queryKey: ['toppings'] })
+    queryClient.invalidateQueries({ queryKey: ['categories-admin'], refetchType: 'all' })
+    queryClient.invalidateQueries({ queryKey: ['categories'], refetchType: 'all' })
+    queryClient.invalidateQueries({ queryKey: ['products-admin'], refetchType: 'all' })
+    queryClient.invalidateQueries({ queryKey: ['products'], refetchType: 'all' })
+    queryClient.invalidateQueries({ queryKey: ['toppings-admin'], refetchType: 'all' })
+    queryClient.invalidateQueries({ queryKey: ['toppings'], refetchType: 'all' })
   }
 
   const saveProduct = useMutation({
     mutationFn: async (payload) => {
-      let imageUrl = payload.imageUrl || null
+      let imageUrl = payload.imageUrl || ''
       if (imageFileRef.current) {
         const uploaded = await uploadApi.image(imageFileRef.current)
         imageUrl = uploaded.url
       }
+
+      // Xóa ảnh cũ trên Cloudinary nếu người dùng gỡ ảnh hoặc thay ảnh mới
+      const oldImg = payload.originalImageUrl
+      if (oldImg && oldImg !== imageUrl) {
+        try {
+          await uploadApi.delete(oldImg)
+        } catch (err) {
+          console.warn('Không thể xóa ảnh trên Cloudinary:', err)
+        }
+      }
+
       const body = {
         name: payload.name,
         categoryId: payload.categoryId,
         basePrice: payload.basePrice,
         description: payload.description,
-        imageUrl,
+        imageUrl: imageUrl ? imageUrl : '',
         active: payload.active,
         hasDrinkOptions: payload.hasDrinkOptions,
       }
@@ -123,9 +139,17 @@ export function MenuPage() {
   })
 
   const saveCategory = useMutation({
-    mutationFn: (payload) => categoryForm.id
-      ? categoryApi.update(categoryForm.id, payload)
-      : categoryApi.create(payload),
+    mutationFn: (payload) => {
+      const id = payload.id || categoryForm?.id
+      const body = {
+        name: payload.name,
+        sortOrder: Number(payload.sortOrder) || 0,
+        active: payload.active,
+      }
+      return id
+        ? categoryApi.update(id, body)
+        : categoryApi.create(body)
+    },
     onSuccess: () => { setCategoryForm(null); setError(''); invalidate() },
     onError: (err) => setError(err.message),
   })
@@ -137,9 +161,19 @@ export function MenuPage() {
   })
 
   const saveTopping = useMutation({
-    mutationFn: (payload) => toppingForm.id
-      ? toppingApi.update(toppingForm.id, payload)
-      : toppingApi.create(payload),
+    mutationFn: (payload) => {
+      const id = payload.id || toppingForm?.id
+      const body = {
+        name: payload.name,
+        extraPrice: Number(payload.extraPrice) || 0,
+        defaultTopping: payload.defaultTopping,
+        active: payload.active,
+        sortOrder: Number(payload.sortOrder) || 0,
+      }
+      return id
+        ? toppingApi.update(id, body)
+        : toppingApi.create(body)
+    },
     onSuccess: () => { setToppingForm(null); setError(''); invalidate() },
     onError: (err) => setError(err.message),
   })
@@ -182,7 +216,8 @@ export function MenuPage() {
       categoryId: Number(productForm.categoryId),
       basePrice: Number(productForm.basePrice),
       description: productForm.description || null,
-      imageUrl: productForm.imageUrl || null,
+      imageUrl: productForm.imageUrl?.trim() || '',
+      originalImageUrl: productForm.originalImageUrl || '',
       active: productForm.active,
       hasDrinkOptions: productForm.hasDrinkOptions,
     })
@@ -191,6 +226,7 @@ export function MenuPage() {
   const submitCategory = (e) => {
     e.preventDefault()
     saveCategory.mutate({
+      id: categoryForm.id,
       name: categoryForm.name.trim(),
       sortOrder: Number(categoryForm.sortOrder) || 0,
       active: categoryForm.active,
@@ -338,6 +374,7 @@ export function MenuPage() {
                             basePrice: product.basePrice,
                             description: product.description || '',
                             imageUrl: product.imageUrl || '',
+                            originalImageUrl: product.imageUrl || '',
                             active: product.active,
                             hasDrinkOptions: product.hasDrinkOptions !== false,
                           })
@@ -380,7 +417,7 @@ export function MenuPage() {
               </tr>
             </thead>
             <tbody>
-              {toppings.map(topping => (
+              {sortedToppings.map(topping => (
                 <tr key={topping.id} className="border-t border-brand-100">
                   <td className="px-4 py-3 font-medium">{topping.name}</td>
                   <td className="px-4 py-3 text-right">{Number(topping.extraPrice) > 0 ? formatCurrency(topping.extraPrice) : 'Free'}</td>
@@ -494,7 +531,7 @@ export function MenuPage() {
                   />
                   <p className="text-[11px] text-brand-500 dark:text-brand-400">
                     {imagePreview
-                      ? 'Đang xem trước ảnh từ máy. Bấm "Lưu" để cập nhật.'
+                      ? 'Bấm "Lưu" để cập nhật.'
                       : 'Hỗ trợ JPG, PNG, WEBP, GIF · Tối đa 5MB.'}
                   </p>
                 </div>

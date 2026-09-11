@@ -77,6 +77,14 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error("Dữ liệu không hợp lệ", "VALIDATION_ERROR"));
     }
 
+    @ExceptionHandler(org.springframework.web.servlet.resource.NoResourceFoundException.class)
+    public ResponseEntity<ApiResponse<Void>> handleNoResource(
+            org.springframework.web.servlet.resource.NoResourceFoundException ex) {
+        log.warn("No handler: {}", ex.getResourcePath());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(ApiResponse.error("Không tìm thấy API", "NOT_FOUND"));
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleGeneral(Exception ex) {
         log.error("Unexpected error: {}", ex.getMessage(), ex);

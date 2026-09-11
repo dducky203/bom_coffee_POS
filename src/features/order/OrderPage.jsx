@@ -10,7 +10,7 @@ import { LoadingPage } from '../../shared/components/Loading'
 import { billiardApi, kdsApi, orderApi } from '../../shared/lib/api'
 import { buildDrinkNote } from '../../shared/lib/drinkOptions'
 import { categoriesQuery, productsQuery, tablesQuery, toppingsQuery } from '../../shared/lib/queries'
-import { durationSecondsBetween, formatCurrency, formatPlayDuration, formatTimeOnly } from '../../shared/lib/utils'
+import { durationSecondsBetween, formatCurrency, formatPlayDuration, formatTimeOnly, parseServerDate } from '../../shared/lib/utils'
 import { DrinkOptionModal } from './DrinkOptionModal'
 import { InvoicePrint } from './InvoicePrint'
 
@@ -184,12 +184,7 @@ export function OrderPage() {
   })
 
   const updateItemStatus = useMutation({
-    mutationFn: async ({ item, status = 'DONE' }) => {
-      if (item.status === 'PENDING' && status === 'DONE') {
-        await kdsApi.updateStatus(item.id, 'IN_PROGRESS')
-      }
-      return kdsApi.updateStatus(item.id, status)
-    },
+    mutationFn: ({ item, status = 'DONE' }) => kdsApi.updateStatus(item.id, status),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['order-by-table', numericTableId] })
       await queryClient.invalidateQueries({ queryKey: ['kds-queue'] })
@@ -198,16 +193,8 @@ export function OrderPage() {
   })
 
   const updateAllItemsStatus = useMutation({
-    mutationFn: async ({ items, status = 'DONE' }) => {
-      await Promise.all(
-        items.map(async (item) => {
-          if (item.status === 'PENDING' && status === 'DONE') {
-            await kdsApi.updateStatus(item.id, 'IN_PROGRESS')
-          }
-          return kdsApi.updateStatus(item.id, status)
-        })
-      )
-    },
+    mutationFn: ({ items, status = 'DONE' }) =>
+      kdsApi.updateStatuses(items.map(item => item.id), status),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['order-by-table', numericTableId] })
       await queryClient.invalidateQueries({ queryKey: ['kds-queue'] })
@@ -238,8 +225,9 @@ export function OrderPage() {
         status: 'PLAYING',
       }
       : null
-  const playingElapsed = liveBilliard?.startTime
-    ? Math.max(0, Math.floor((now - new Date(liveBilliard.startTime).getTime()) / 1000))
+  const startTimeDate = parseServerDate(liveBilliard?.startTime)
+  const playingElapsed = startTimeDate
+    ? Math.max(0, Math.floor((now - startTimeDate.getTime()) / 1000))
     : Number(liveBilliard?.elapsedSeconds || 0)
   const itemsTotalAmount = cart.reduce((sum, item) => sum + (Number(item.unitPrice ?? item.product.basePrice) * item.quantity), 0)
   const orderTotal = Number(order?.finalAmount || order?.totalAmount || 0)
@@ -367,10 +355,10 @@ export function OrderPage() {
                     <div
                       key={product.id}
                       onClick={() => setSelectedProduct(product)}
-                      className="group cursor-pointer rounded-2xl border border-brand-200/70 dark:border-brand-800/80 bg-white dark:bg-brand-900 shadow-sm hover:shadow-xl hover:border-brand-400 dark:hover:border-brand-600 transition-all duration-300 overflow-hidden flex flex-col justify-between"
+                      className="group cursor-pointer rounded-2xl border border-brand-200/70 dark:border-brand-700/80 bg-white dark:bg-brand-800 shadow-sm hover:shadow-xl hover:border-brand-400 dark:hover:border-brand-500 transition-all duration-300 overflow-hidden flex flex-col justify-between"
                     >
                       {/* Image Container */}
-                      <div className="h-36 sm:h-40 bg-gradient-to-br from-brand-100/60 to-brand-50 dark:from-brand-800/60 dark:to-brand-900 relative overflow-hidden flex items-center justify-center">
+                      <div className="h-36 sm:h-40 bg-gradient-to-br from-brand-100/60 to-brand-50 dark:from-brand-850 dark:to-brand-800 relative overflow-hidden flex items-center justify-center">
                         {product.imageUrl ? (
                           <img
                             src={product.imageUrl}
@@ -412,11 +400,11 @@ export function OrderPage() {
                           )}
                         </div>
 
-                        <div className="flex items-center justify-between pt-2 border-t border-brand-100 dark:border-brand-800/80">
+                        <div className="flex items-center justify-between pt-2 border-t border-brand-100 dark:border-brand-700/80">
                           <span className="text-sm font-black text-brand-900 dark:text-brand-50">
                             {formatCurrency(product.basePrice)}
                           </span>
-                          <div className="w-7 h-7 rounded-lg bg-brand-50 dark:bg-brand-800 text-brand-600 dark:text-brand-300 group-hover:bg-brand-600 group-hover:text-white dark:group-hover:bg-brand-600 flex items-center justify-center transition-all duration-200 shadow-sm">
+                          <div className="w-7 h-7 rounded-lg bg-brand-50 dark:bg-brand-700 text-brand-600 dark:text-brand-200 group-hover:bg-brand-600 group-hover:text-white dark:group-hover:bg-brand-600 flex items-center justify-center transition-all duration-200 shadow-sm">
                             <Plus size={16} strokeWidth={2.5} />
                           </div>
                         </div>
@@ -522,28 +510,36 @@ export function OrderPage() {
                   </Button>
                 )}
                 {liveBilliard && (
-                  <div className="space-y-3">
-                    <div className="text-sm text-blue-800 dark:text-blue-200 space-y-1">
-                      <div className="flex justify-between">
-                        <span>Giờ bắt đầu</span>
-                        <span className="font-mono font-semibold">{formatTimeOnly(liveBilliard.startTime)}</span>
+                  <div className="space-y-3 p-3 rounded-2xl bg-brand-50/80 dark:bg-brand-900/50 border border-brand-200/80 dark:border-brand-700">
+                    <div className="text-xs text-brand-700 dark:text-brand-300 space-y-1.5">
+                      <div className="flex justify-between items-center pb-1 border-b border-brand-200/60 dark:border-brand-700/60">
+                        <span className="font-bold text-brand-900 dark:text-brand-100">
+                          🎱 Giờ chơi Bi-a
+                        </span>
+                        <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300">
+                          Đang tính giờ
+                        </span>
                       </div>
                       <div className="flex justify-between">
-                        <span>Giờ kết thúc</span>
-                        <span className="font-mono font-semibold">{formatTimeOnly(now)}</span>
+                        <span className="text-brand-500">Giờ bắt đầu</span>
+                        <span className="font-mono font-semibold text-brand-900 dark:text-brand-100">{formatTimeOnly(liveBilliard.startTime)}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span>Thời gian chơi</span>
-                        <span className="font-semibold">{formatPlayDuration(playingElapsed)}</span>
+                        <span className="text-brand-500">Giờ kết thúc</span>
+                        <span className="font-mono font-semibold text-brand-900 dark:text-brand-100">{formatTimeOnly(now)}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span>Tạm tính</span>
-                        <span className="font-semibold">{formatCurrency(liveBilliard.currentAmount)}</span>
+                        <span className="text-brand-500">Thời gian chơi</span>
+                        <span className="font-semibold text-brand-900 dark:text-brand-100">{formatPlayDuration(playingElapsed)}</span>
+                      </div>
+                      <div className="flex justify-between pt-1 border-t border-brand-200/60 dark:border-brand-700/60 font-medium">
+                        <span className="text-brand-600 dark:text-brand-400">Tạm tính tiền giờ</span>
+                        <span className="font-bold text-brand-900 dark:text-brand-50">{formatCurrency(liveBilliard.currentAmount)}</span>
                       </div>
                     </div>
                     <Button
                       type="button"
-                      className="w-full bg-red-500 hover:bg-red-600 text-white"
+                      className="w-full h-10 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl shadow-sm"
                       onClick={() => stopBilliard.mutate(liveBilliard.sessionId)}
                       disabled={stopBilliard.isPending}
                     >

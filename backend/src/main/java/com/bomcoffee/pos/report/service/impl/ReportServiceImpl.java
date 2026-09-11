@@ -40,7 +40,7 @@ public class ReportServiceImpl implements ReportService {
 
     @Override
     public List<Map<String, Object>> getTopProducts(LocalDate from, LocalDate to) {
-        List<Order> orders = orderRepository.findCompletedOrdersBetween(
+        List<Order> orders = orderRepository.findCompletedOrdersBetweenWithItems(
                 from.atStartOfDay(), to.plusDays(1).atStartOfDay());
 
         Map<String, Long> productCount = orders.stream()
@@ -63,7 +63,7 @@ public class ReportServiceImpl implements ReportService {
 
     @Override
     public List<Map<String, Object>> getRevenueByStaff(LocalDate from, LocalDate to) {
-        List<Order> orders = orderRepository.findCompletedOrdersBetween(
+        List<Order> orders = orderRepository.findCompletedOrdersBetweenWithStaff(
                 from.atStartOfDay(), to.plusDays(1).atStartOfDay());
 
         Map<String, BigDecimal> byStaff = orders.stream()

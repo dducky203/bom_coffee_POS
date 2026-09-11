@@ -56,7 +56,41 @@ export function DrinkOptionModal({ product, toppings, onClose, onAdd }) {
   }
 
   return (
-    <Modal isOpen onClose={onClose} title="Tùy chỉnh đồ uống" subtitle={product.name} className="max-w-lg">
+    <Modal
+      isOpen
+      onClose={onClose}
+      title="Tùy chỉnh đồ uống"
+      subtitle={product.name}
+      className="max-w-lg"
+      footer={
+        <div className="flex items-center justify-between w-full">
+          <div>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-brand-400 block">TỔNG ĐƠN MÓN</span>
+            <span className="text-xl font-black text-brand-900 dark:text-brand-50">
+              {formatCurrency(unitPrice)}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={onClose}
+              className="rounded-xl px-4 h-11 border-brand-200 text-brand-700 hover:bg-brand-100/60 dark:border-brand-700 dark:text-brand-300 font-medium"
+            >
+              Hủy
+            </Button>
+            <Button 
+              type="button" 
+              onClick={() => onAdd(options)}
+              className="rounded-xl px-5 h-11 bg-gradient-to-r from-brand-600 to-brand-700 hover:from-brand-500 hover:to-brand-600 text-white font-bold shadow-md shadow-brand-600/20 active:scale-95 transition-all flex items-center gap-2"
+            >
+              <ShoppingBag size={18} />
+              <span>Thêm vào giỏ</span>
+            </Button>
+          </div>
+        </div>
+      }
+    >
       <div className="space-y-5">
         {/* Product Banner Info */}
         <div className="flex items-center gap-4 p-3.5 rounded-2xl bg-gradient-to-br from-brand-50 to-brand-100/60 dark:from-brand-800/50 dark:to-brand-800/20 border border-brand-200/60 dark:border-brand-700/50 shadow-sm">
@@ -159,34 +193,6 @@ export function DrinkOptionModal({ product, toppings, onClose, onAdd }) {
             value={options.extraNote}
             onChange={(e) => setOptions({ ...options, extraNote: e.target.value })}
           />
-        </div>
-
-        {/* Bottom Total & Submit Bar */}
-        <div className="flex items-center justify-between pt-4 border-t border-brand-100 dark:border-brand-800">
-          <div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-brand-400 block">TỔNG ĐƠN MÓN</span>
-            <span className="text-xl font-black text-brand-900 dark:text-brand-50">
-              {formatCurrency(unitPrice)}
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button 
-              type="button" 
-              variant="outline" 
-              onClick={onClose}
-              className="rounded-xl px-4 h-11 border-brand-200 text-brand-700 hover:bg-brand-100/60 dark:border-brand-700 dark:text-brand-300 font-medium"
-            >
-              Hủy
-            </Button>
-            <Button 
-              type="button" 
-              onClick={() => onAdd(options)}
-              className="rounded-xl px-5 h-11 bg-gradient-to-r from-brand-600 to-brand-700 hover:from-brand-500 hover:to-brand-600 text-white font-bold shadow-md shadow-brand-600/20 active:scale-95 transition-all flex items-center gap-2"
-            >
-              <ShoppingBag size={18} />
-              <span>Thêm vào giỏ</span>
-            </Button>
-          </div>
         </div>
       </div>
     </Modal>

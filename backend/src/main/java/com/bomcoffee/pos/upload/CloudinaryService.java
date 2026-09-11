@@ -62,5 +62,53 @@ public class CloudinaryService {
         }
     }
 
+    public void deleteImage(String urlOrPublicId) {
+        if (urlOrPublicId == null || urlOrPublicId.isBlank()) return;
+        if (properties.getCloudName() == null || properties.getCloudName().isBlank()
+                || properties.getApiKey() == null || properties.getApiSecret() == null) {
+            return;
+        }
+
+        String publicId = extractPublicId(urlOrPublicId);
+        if (publicId == null || publicId.isBlank()) return;
+
+        try {
+            cloudinary.uploader().destroy(publicId, ObjectUtils.emptyMap());
+        } catch (Exception ignored) {
+            // Ignore failure on cloud image cleanup
+        }
+    }
+
+    public static String extractPublicId(String urlOrPublicId) {
+        if (urlOrPublicId == null || urlOrPublicId.isBlank()) return null;
+        if (!urlOrPublicId.startsWith("http://") && !urlOrPublicId.startsWith("https://")) {
+            int dot = urlOrPublicId.lastIndexOf('.');
+            return dot != -1 ? urlOrPublicId.substring(0, dot) : urlOrPublicId;
+        }
+
+        String clean = urlOrPublicId.split("\\?")[0];
+        int uploadIndex = clean.indexOf("/upload/");
+        if (uploadIndex == -1) return null;
+
+        String afterUpload = clean.substring(uploadIndex + "/upload/".length());
+        String[] segments = afterUpload.split("/");
+        int startIndex = 0;
+        for (int i = 0; i < segments.length; i++) {
+            if (segments[i].matches("^v\\d+$")) {
+                startIndex = i + 1;
+                break;
+            }
+        }
+
+        StringBuilder sb = new StringBuilder();
+        for (int i = startIndex; i < segments.length; i++) {
+            if (sb.length() > 0) sb.append("/");
+            sb.append(segments[i]);
+        }
+        String publicIdWithExt = sb.toString();
+        int dotIndex = publicIdWithExt.lastIndexOf('.');
+        return dotIndex != -1 ? publicIdWithExt.substring(0, dotIndex) : publicIdWithExt;
+    }
+
     public record UploadResult(String url, String publicId) {}
 }
