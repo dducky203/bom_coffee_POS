@@ -128,13 +128,13 @@ export function HistoryPage() {
     setSize(10)
   }
 
-  const inputClass = 'w-full h-10 px-3 border border-brand-200 rounded-lg text-sm bg-white outline-none focus:border-brand-500'
+  const inputClass = 'w-full h-10 px-3 border border-brand-200 dark:border-brand-700 rounded-lg text-sm bg-white dark:bg-brand-800 text-brand-900 dark:text-brand-50 outline-none focus:border-brand-500'
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-brand-900">Lịch sử đơn hàng</h1>
-        <p className="text-brand-500">Lọc theo nhiều trường và xem theo trang</p>
+        <h1 className="text-2xl font-bold text-brand-900 dark:text-brand-50">Lịch sử đơn hàng</h1>
+        <p className="text-brand-500 dark:text-brand-400">Lọc theo nhiều trường và xem theo trang</p>
       </div>
 
       <Card>
@@ -146,7 +146,7 @@ export function HistoryPage() {
             <Button size="sm" variant="outline" onClick={() => applyPreset('', '')}>Tất cả ngày</Button>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
             <div>
               <label className="text-sm font-medium text-brand-700 block mb-1">Từ ngày</label>
               <input type="date" className={inputClass} value={filters.from} onChange={(e) => handleFilterChange('from', e.target.value)} />
@@ -300,7 +300,11 @@ export function HistoryPage() {
                     const status = statusLabel(order.status)
                     const payment = formatPaymentMethodLabel(order)
                     return (
-                      <tr key={order.id} className="hover:bg-brand-50 transition-colors">
+                      <tr
+                        key={order.id}
+                        onClick={() => navigate(`/history/${order.id}`)}
+                        className="hover:bg-brand-50/80 dark:hover:bg-brand-800/60 cursor-pointer transition-colors"
+                      >
                         <td className="px-4 py-3 text-sm font-mono text-brand-900">
                           #{order.id}
                           {order.previousOrder && (

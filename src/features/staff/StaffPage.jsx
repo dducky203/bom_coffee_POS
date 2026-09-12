@@ -3,7 +3,7 @@ import { Navigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { format } from 'date-fns'
 import { vi } from 'date-fns/locale'
-import { ChevronLeft, ChevronRight, Eye, EyeOff, KeyRound, Lock, Pencil, Plus, Search, Unlock, Users } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Eye, EyeOff, KeyRound, Lock, Pencil, Plus, Search, Unlock, Users, Phone, Calendar, Shield } from 'lucide-react'
 import { useAuthStore } from '../../app/store'
 import { userApi } from '../../shared/lib/api'
 import { Button } from '../../shared/components/Button'
@@ -24,10 +24,10 @@ const ROLE_LABELS = {
 }
 
 const ROLE_BADGE = {
-  ADMIN: 'bg-purple-100 text-purple-800',
-  CASHIER: 'bg-teal-100 text-teal-800',
-  WAITER: 'bg-sky-100 text-sky-800',
-  BARTENDER: 'bg-orange-100 text-orange-800',
+  ADMIN: 'bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300 border-purple-200 dark:border-purple-800',
+  CASHIER: 'bg-teal-100 text-teal-800 dark:bg-teal-950/60 dark:text-teal-300 border-teal-200 dark:border-teal-800',
+  WAITER: 'bg-sky-100 text-sky-800 dark:bg-sky-950/60 dark:text-sky-300 border-sky-200 dark:border-sky-800',
+  BARTENDER: 'bg-orange-100 text-orange-800 dark:bg-orange-950/60 dark:text-orange-300 border-orange-200 dark:border-orange-800',
 }
 
 const emptyForm = {
@@ -185,41 +185,48 @@ export function StaffPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between gap-4">
+    <div className="space-y-5 max-w-7xl mx-auto pb-12">
+      {/* Header Section */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-brand-900">Quản lý nhân viên</h1>
-          <p className="text-brand-500">Tạo tài khoản, phân quyền và khóa / mở khóa nhân viên</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-brand-900 dark:text-brand-50">Quản lý nhân viên</h1>
+          <p className="text-xs sm:text-sm text-brand-500 dark:text-brand-400 mt-0.5">Tạo tài khoản, phân quyền và quản lý tài khoản nhân viên</p>
         </div>
-        <Button onClick={() => {
-          setError('')
-          setShowPassword(false)
-          setForm({ ...emptyForm, roleName: roles.find(r => r.name === 'WAITER')?.name || roles[0]?.name || 'WAITER' })
-        }}>
-          <Plus size={16} className="mr-2" /> Thêm nhân viên
+        <Button
+          onClick={() => {
+            setError('')
+            setShowPassword(false)
+            setForm({ ...emptyForm, roleName: roles.find(r => r.name === 'WAITER')?.name || roles[0]?.name || 'WAITER' })
+          }}
+          className="w-full sm:w-auto gap-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-medium"
+        >
+          <Plus size={18} />
+          <span>Thêm nhân viên</span>
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      {/* Stats Cards Row */}
+      <div className="grid grid-cols-3 gap-3 sm:gap-4">
         <StatCard title="Tổng nhân viên" value={stats.total} />
-        <StatCard title="Đang hoạt động" value={stats.active} accent="text-green-700" />
-        <StatCard title="Đã khóa" value={stats.locked} accent="text-red-600" />
+        <StatCard title="Đang hoạt động" value={stats.active} accent="text-emerald-600 dark:text-emerald-400" />
+        <StatCard title="Đã khóa" value={stats.locked} accent="text-red-600 dark:text-red-400" />
       </div>
 
-      {error && !form && !passwordForm && <p className="text-red-600 text-sm">{error}</p>}
+      {error && !form && !passwordForm && <p className="text-red-600 dark:text-red-400 text-sm font-medium">{error}</p>}
 
-      <div className="bg-white rounded-xl border border-brand-200 p-4 flex flex-col lg:flex-row gap-3">
-        <div className="relative flex-1">
+      {/* Responsive Filters Row */}
+      <div className="bg-white dark:bg-brand-800 rounded-2xl border border-brand-200 dark:border-brand-700 p-3.5 sm:p-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="relative sm:col-span-1">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-400" />
           <input
             className={`${inputClass} pl-9`}
-            placeholder="Tìm theo tên, tài khoản, số điện thoại..."
+            placeholder="Tìm theo tên, tài khoản, SĐT..."
             value={keywordInput}
             onChange={(e) => setKeywordInput(e.target.value)}
           />
         </div>
         <select
-          className={`${inputClass} lg:w-48`}
+          className={inputClass}
           value={roleFilter}
           onChange={(e) => { setRoleFilter(e.target.value); setPage(0) }}
         >
@@ -229,7 +236,7 @@ export function StaffPage() {
           ))}
         </select>
         <select
-          className={`${inputClass} lg:w-44`}
+          className={inputClass}
           value={statusFilter}
           onChange={(e) => { setStatusFilter(e.target.value); setPage(0) }}
         >
@@ -239,108 +246,218 @@ export function StaffPage() {
         </select>
       </div>
 
-      <div className="flex items-center justify-between text-sm text-brand-600">
-        <p>
-          {isFetching && !isLoading ? 'Đang lọc...' : `${totalElements} nhân viên`}
+      {/* Counter & Page size filter */}
+      <div className="flex items-center justify-between text-xs sm:text-sm text-brand-600 dark:text-brand-400">
+        <p className="font-medium">
+          {isFetching && !isLoading ? 'Đang tải...' : `${totalElements} nhân viên`}
         </p>
         <div className="flex items-center gap-2">
-          <span>Mỗi trang</span>
+          <span>Hiển thị</span>
           <select
-            className="h-9 px-2 border border-brand-200 rounded-lg bg-white"
+            className="h-8 px-2 border border-brand-200 dark:border-brand-700 rounded-lg bg-white dark:bg-brand-800 text-brand-900 dark:text-brand-50 outline-none text-xs font-medium"
             value={size}
             onChange={(e) => { setSize(Number(e.target.value)); setPage(0) }}
           >
-            {PAGE_SIZES.map(n => <option key={n} value={n}>{n}</option>)}
+            {PAGE_SIZES.map(n => <option key={n} value={n}>{n} / trang</option>)}
           </select>
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-brand-200 overflow-hidden">
-        {isLoading && <p className="p-4 text-brand-500 text-sm">Đang tải...</p>}
+      {/* Staff List: Mobile Cards View (sm:hidden) */}
+      <div className="block md:hidden space-y-3">
+        {isLoading && <p className="p-4 text-center text-brand-500 text-sm">Đang tải danh sách nhân viên...</p>}
+        {!isLoading && staffs.length === 0 && (
+          <div className="p-8 text-center text-brand-400 bg-white dark:bg-brand-800 rounded-2xl border border-brand-200 dark:border-brand-700">
+            <Users size={36} className="mx-auto mb-2 opacity-50" />
+            <p className="text-sm">Không tìm thấy nhân viên phù hợp</p>
+          </div>
+        )}
+        {staffs.map(staff => {
+          const isSelf = currentUser.id === staff.id
+          return (
+            <div
+              key={staff.id}
+              className="p-4 bg-white dark:bg-brand-800 rounded-2xl border border-brand-200 dark:border-brand-700 space-y-3 shadow-sm"
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <p className="font-bold text-brand-900 dark:text-brand-50 text-base">{staff.fullName}</p>
+                    {isSelf && (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300">
+                        Bạn
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-brand-500 dark:text-brand-400 font-mono mt-0.5">@{staff.username}</p>
+                </div>
+
+                <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                  <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold border ${ROLE_BADGE[staff.role] || 'bg-gray-100 text-gray-700'}`}>
+                    {roleLabel(staff.role)}
+                  </span>
+                  <Badge variant={staff.active ? 'success' : 'danger'}>
+                    {staff.active ? 'Hoạt động' : 'Đã khóa'}
+                  </Badge>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 text-xs text-brand-600 dark:text-brand-400 pt-2 border-t border-brand-100 dark:border-brand-700/80">
+                <div className="flex items-center gap-1.5">
+                  <Phone size={14} className="text-brand-400 shrink-0" />
+                  <span className="truncate">{staff.phone || '—'}</span>
+                </div>
+                <div className="flex items-center gap-1.5 font-mono">
+                  <Calendar size={14} className="text-brand-400 shrink-0" />
+                  <span className="truncate">{formatDate(staff.createdAt)}</span>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-brand-100 dark:border-brand-700/80">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="rounded-xl h-9 px-3 gap-1.5 text-xs text-brand-700 dark:text-brand-200"
+                  onClick={() => {
+                    setError('')
+                    setShowPassword(false)
+                    setForm({
+                      id: staff.id,
+                      username: staff.username,
+                      password: '',
+                      fullName: staff.fullName,
+                      phone: staff.phone || '',
+                      roleName: staff.role,
+                      active: staff.active,
+                    })
+                  }}
+                >
+                  <Pencil size={14} />
+                  <span>Sửa</span>
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="rounded-xl h-9 px-3 gap-1.5 text-xs text-brand-700 dark:text-brand-200"
+                  onClick={() => {
+                    setError('')
+                    setShowPassword(false)
+                    setPasswordForm({ id: staff.id, fullName: staff.fullName, newPassword: '', confirmPassword: '' })
+                  }}
+                >
+                  <KeyRound size={14} />
+                  <span>Đổi MK</span>
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={isSelf}
+                  className={`rounded-xl h-9 px-3 gap-1.5 text-xs ${
+                    staff.active ? 'text-red-600 dark:text-red-400 border-red-200 dark:border-red-800' : 'text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800'
+                  }`}
+                  onClick={() => {
+                    setError('')
+                    setConfirmLock(staff)
+                  }}
+                >
+                  {staff.active ? <Lock size={14} /> : <Unlock size={14} />}
+                  <span>{staff.active ? 'Khóa' : 'Mở khóa'}</span>
+                </Button>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Staff List: Desktop Table View (hidden md:block) */}
+      <div className="hidden md:block bg-white dark:bg-brand-800 rounded-2xl border border-brand-200 dark:border-brand-700 overflow-hidden shadow-sm">
+        {isLoading && <p className="p-6 text-brand-500 text-sm text-center">Đang tải danh sách nhân viên...</p>}
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="bg-brand-50 text-brand-600">
+            <thead className="bg-brand-50 dark:bg-brand-850 text-brand-700 dark:text-brand-300 border-b border-brand-200 dark:border-brand-700">
               <tr>
-                <th className="text-left font-medium px-4 py-3">Nhân viên</th>
-                <th className="text-left font-medium px-4 py-3">Tài khoản</th>
-                <th className="text-left font-medium px-4 py-3">Điện thoại</th>
-                <th className="text-left font-medium px-4 py-3">Vai trò</th>
-                <th className="text-left font-medium px-4 py-3">Trạng thái</th>
-                <th className="text-left font-medium px-4 py-3">Ngày tạo</th>
-                <th className="px-4 py-3" />
+                <th className="text-left font-bold px-4 py-3.5">Nhân viên</th>
+                <th className="text-left font-bold px-4 py-3.5">Tài khoản</th>
+                <th className="text-left font-bold px-4 py-3.5">Điện thoại</th>
+                <th className="text-left font-bold px-4 py-3.5">Vai trò</th>
+                <th className="text-left font-bold px-4 py-3.5">Trạng thái</th>
+                <th className="text-left font-bold px-4 py-3.5">Ngày tạo</th>
+                <th className="px-4 py-3.5 text-right">Thao tác</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-brand-100 dark:divide-brand-700/80">
               {staffs.map(staff => {
                 const isSelf = currentUser.id === staff.id
                 return (
-                  <tr key={staff.id} className="border-t border-brand-100">
-                    <td className="px-4 py-3">
-                      <p className="font-medium text-brand-900">{staff.fullName}</p>
-                      {isSelf && <p className="text-xs text-brand-400">Tài khoản của bạn</p>}
+                  <tr key={staff.id} className="hover:bg-brand-50/60 dark:hover:bg-brand-700/40 transition-colors">
+                    <td className="px-4 py-3.5">
+                      <p className="font-bold text-brand-900 dark:text-brand-50">{staff.fullName}</p>
+                      {isSelf && <p className="text-xs text-blue-600 dark:text-blue-400 font-medium">Tài khoản của bạn</p>}
                     </td>
-                    <td className="px-4 py-3 text-brand-700">{staff.username}</td>
-                    <td className="px-4 py-3 text-brand-600">{staff.phone || '—'}</td>
-                    <td className="px-4 py-3">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${ROLE_BADGE[staff.role] || 'bg-gray-100 text-gray-700'}`}>
+                    <td className="px-4 py-3.5 text-brand-700 dark:text-brand-300 font-mono">@{staff.username}</td>
+                    <td className="px-4 py-3.5 text-brand-600 dark:text-brand-400">{staff.phone || '—'}</td>
+                    <td className="px-4 py-3.5">
+                      <span className={`px-2.5 py-1 rounded-full text-xs font-semibold border ${ROLE_BADGE[staff.role] || 'bg-gray-100 text-gray-700'}`}>
                         {roleLabel(staff.role)}
                       </span>
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3.5">
                       <Badge variant={staff.active ? 'success' : 'danger'}>
                         {staff.active ? 'Hoạt động' : 'Đã khóa'}
                       </Badge>
                     </td>
-                    <td className="px-4 py-3 text-brand-500 whitespace-nowrap">{formatDate(staff.createdAt)}</td>
-                    <td className="px-4 py-3 text-right whitespace-nowrap">
-                      <button
-                        className="p-2 text-brand-600 hover:bg-brand-50 rounded-lg"
-                        title="Sửa"
-                        onClick={() => {
-                          setError('')
-                          setShowPassword(false)
-                          setForm({
-                            id: staff.id,
-                            username: staff.username,
-                            password: '',
-                            fullName: staff.fullName,
-                            phone: staff.phone || '',
-                            roleName: staff.role,
-                            active: staff.active,
-                          })
-                        }}
-                      >
-                        <Pencil size={16} />
-                      </button>
-                      <button
-                        className="p-2 text-brand-600 hover:bg-brand-50 rounded-lg"
-                        title="Đặt lại mật khẩu"
-                        onClick={() => {
-                          setError('')
-                          setShowPassword(false)
-                          setPasswordForm({ id: staff.id, fullName: staff.fullName, newPassword: '', confirmPassword: '' })
-                        }}
-                      >
-                        <KeyRound size={16} />
-                      </button>
-                      <button
-                        className="p-2 text-red-500 hover:bg-red-50 rounded-lg disabled:opacity-40 disabled:hover:bg-transparent"
-                        title={isSelf ? 'Không thể khóa tài khoản đang đăng nhập' : (staff.active ? 'Khóa tài khoản' : 'Mở khóa')}
-                        disabled={isSelf}
-                        onClick={() => {
-                          setError('')
-                          setConfirmLock(staff)
-                        }}
-                      >
-                        {staff.active ? <Lock size={16} /> : <Unlock size={16} />}
-                      </button>
+                    <td className="px-4 py-3.5 text-brand-500 dark:text-brand-400 font-mono whitespace-nowrap">{formatDate(staff.createdAt)}</td>
+                    <td className="px-4 py-3.5 text-right whitespace-nowrap">
+                      <div className="flex items-center justify-end gap-1">
+                        <button
+                          className="p-2 text-brand-600 dark:text-brand-300 hover:bg-brand-100 dark:hover:bg-brand-700 rounded-xl transition-colors"
+                          title="Sửa thông tin"
+                          onClick={() => {
+                            setError('')
+                            setShowPassword(false)
+                            setForm({
+                              id: staff.id,
+                              username: staff.username,
+                              password: '',
+                              fullName: staff.fullName,
+                              phone: staff.phone || '',
+                              roleName: staff.role,
+                              active: staff.active,
+                            })
+                          }}
+                        >
+                          <Pencil size={17} />
+                        </button>
+                        <button
+                          className="p-2 text-brand-600 dark:text-brand-300 hover:bg-brand-100 dark:hover:bg-brand-700 rounded-xl transition-colors"
+                          title="Đặt lại mật khẩu"
+                          onClick={() => {
+                            setError('')
+                            setShowPassword(false)
+                            setPasswordForm({ id: staff.id, fullName: staff.fullName, newPassword: '', confirmPassword: '' })
+                          }}
+                        >
+                          <KeyRound size={17} />
+                        </button>
+                        <button
+                          className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-xl transition-colors disabled:opacity-40 disabled:hover:bg-transparent"
+                          title={isSelf ? 'Không thể khóa tài khoản đang đăng nhập' : (staff.active ? 'Khóa tài khoản' : 'Mở khóa')}
+                          disabled={isSelf}
+                          onClick={() => {
+                            setError('')
+                            setConfirmLock(staff)
+                          }}
+                        >
+                          {staff.active ? <Lock size={17} /> : <Unlock size={17} />}
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 )
               })}
               {!isLoading && staffs.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-4 py-10 text-center text-brand-400">
+                  <td colSpan={7} className="px-4 py-12 text-center text-brand-400">
                     Không tìm thấy nhân viên phù hợp
                   </td>
                 </tr>
@@ -350,12 +467,13 @@ export function StaffPage() {
         </div>
       </div>
 
+      {/* Pagination Controls */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-        <p className="text-sm text-brand-600">
+        <p className="text-xs sm:text-sm text-brand-600 dark:text-brand-400">
           Trang {totalPages === 0 ? 0 : page + 1} / {Math.max(totalPages, 1)}
         </p>
         <div className="flex items-center gap-1">
-          <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage(p => Math.max(0, p - 1))}>
+          <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage(p => Math.max(0, p - 1))} className="rounded-xl">
             <ChevronLeft size={16} />
           </Button>
           {pages.map((p, index) => {
@@ -366,8 +484,8 @@ export function StaffPage() {
                 <button
                   type="button"
                   onClick={() => setPage(p)}
-                  className={`h-9 min-w-9 px-2 rounded-lg text-sm border ${
-                    p === page ? 'bg-brand-600 text-white border-brand-600' : 'bg-white border-brand-200 text-brand-700'
+                  className={`h-9 min-w-9 px-2 rounded-xl text-xs font-bold border transition-all ${
+                    p === page ? 'bg-brand-600 text-white border-brand-600 shadow-sm' : 'bg-white dark:bg-brand-800 border-brand-200 dark:border-brand-700 text-brand-700 dark:text-brand-300'
                   }`}
                 >
                   {p + 1}
@@ -380,24 +498,26 @@ export function StaffPage() {
             size="sm"
             disabled={page >= totalPages - 1 || totalPages === 0}
             onClick={() => setPage(p => p + 1)}
+            className="rounded-xl"
           >
             <ChevronRight size={16} />
           </Button>
         </div>
       </div>
 
+      {/* Form Modal */}
       <Modal isOpen={Boolean(form)} onClose={() => { setForm(null); setError('') }} title={form?.id ? 'Sửa nhân viên' : 'Thêm nhân viên'}>
         {form && (
           <form onSubmit={submitStaff} className="space-y-3">
-            {error && <p className="text-red-600 text-sm">{error}</p>}
+            {error && <p className="text-red-600 text-sm font-medium">{error}</p>}
             <div>
-              <label className="text-sm font-medium">Họ và tên</label>
+              <label className="text-sm font-medium text-brand-900 dark:text-brand-100">Họ và tên</label>
               <input className={inputClass} required value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} />
             </div>
             <div>
-              <label className="text-sm font-medium">Tên đăng nhập</label>
+              <label className="text-sm font-medium text-brand-900 dark:text-brand-100">Tên đăng nhập</label>
               <input
-                className={`${inputClass} disabled:bg-brand-50 disabled:text-brand-500`}
+                className={`${inputClass} disabled:bg-brand-50 dark:disabled:bg-brand-900 disabled:text-brand-400`}
                 required
                 disabled={Boolean(form.id)}
                 value={form.username}
@@ -407,7 +527,7 @@ export function StaffPage() {
             </div>
             {!form.id && (
               <div>
-                <label className="text-sm font-medium">Mật khẩu</label>
+                <label className="text-sm font-medium text-brand-900 dark:text-brand-100">Mật khẩu</label>
                 <div className="relative">
                   <input
                     className={`${inputClass} pr-11`}
@@ -424,11 +544,11 @@ export function StaffPage() {
               </div>
             )}
             <div>
-              <label className="text-sm font-medium">Số điện thoại</label>
+              <label className="text-sm font-medium text-brand-900 dark:text-brand-100">Số điện thoại</label>
               <input className={inputClass} value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
             </div>
             <div>
-              <label className="text-sm font-medium">Vai trò</label>
+              <label className="text-sm font-medium text-brand-900 dark:text-brand-100">Vai trò</label>
               <Select
                 value={form.roleName}
                 onChange={(val) => setForm({ ...form, roleName: val })}
@@ -450,21 +570,26 @@ export function StaffPage() {
                 />
               </div>
             )}
-            <div className="flex justify-end gap-2 pt-2">
-              <Button type="button" variant="outline" onClick={() => { setForm(null); setError('') }}>Hủy</Button>
-              <Button type="submit" disabled={saveStaff.isPending}>{saveStaff.isPending ? 'Đang lưu...' : 'Lưu'}</Button>
+            <div className="flex justify-end gap-2 pt-3">
+              <Button type="button" variant="outline" onClick={() => { setForm(null); setError('') }} className="rounded-xl">Hủy</Button>
+              <Button type="submit" disabled={saveStaff.isPending} className="rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-medium">
+                {saveStaff.isPending ? 'Đang lưu...' : 'Lưu'}
+              </Button>
             </div>
           </form>
         )}
       </Modal>
 
+      {/* Reset Password Modal */}
       <Modal isOpen={Boolean(passwordForm)} onClose={() => { setPasswordForm(null); setError('') }} title="Đặt lại mật khẩu">
         {passwordForm && (
           <form onSubmit={submitPassword} className="space-y-3">
-            <p className="text-sm text-brand-600">Đặt mật khẩu mới cho <span className="font-semibold">{passwordForm.fullName}</span></p>
-            {error && <p className="text-red-600 text-sm">{error}</p>}
+            <p className="text-sm text-brand-600 dark:text-brand-300">
+              Đặt mật khẩu mới cho <span className="font-bold text-brand-900 dark:text-brand-50">{passwordForm.fullName}</span>
+            </p>
+            {error && <p className="text-red-600 text-sm font-medium">{error}</p>}
             <div>
-              <label className="text-sm font-medium">Mật khẩu mới</label>
+              <label className="text-sm font-medium text-brand-900 dark:text-brand-100">Mật khẩu mới</label>
               <div className="relative">
                 <input
                   className={`${inputClass} pr-11`}
@@ -480,7 +605,7 @@ export function StaffPage() {
               </div>
             </div>
             <div>
-              <label className="text-sm font-medium">Xác nhận mật khẩu</label>
+              <label className="text-sm font-medium text-brand-900 dark:text-brand-100">Xác nhận mật khẩu</label>
               <input
                 className={inputClass}
                 type={showPassword ? 'text' : 'password'}
@@ -490,14 +615,17 @@ export function StaffPage() {
                 onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
               />
             </div>
-            <div className="flex justify-end gap-2 pt-2">
-              <Button type="button" variant="outline" onClick={() => { setPasswordForm(null); setError('') }}>Hủy</Button>
-              <Button type="submit" disabled={resetPassword.isPending}>{resetPassword.isPending ? 'Đang lưu...' : 'Đặt lại'}</Button>
+            <div className="flex justify-end gap-2 pt-3">
+              <Button type="button" variant="outline" onClick={() => { setPasswordForm(null); setError('') }} className="rounded-xl">Hủy</Button>
+              <Button type="submit" disabled={resetPassword.isPending} className="rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-medium">
+                {resetPassword.isPending ? 'Đang lưu...' : 'Đặt lại'}
+              </Button>
             </div>
           </form>
         )}
       </Modal>
 
+      {/* Lock Account Confirmation Modal */}
       <ConfirmModal
         isOpen={Boolean(confirmLock)}
         onClose={() => setConfirmLock(null)}
@@ -516,13 +644,13 @@ export function StaffPage() {
 
 function StatCard({ title, value, accent }) {
   return (
-    <div className="bg-white rounded-xl border border-brand-200 p-4 flex items-center justify-between">
+    <div className="bg-white dark:bg-brand-800 rounded-2xl border border-brand-200 dark:border-brand-700 p-3.5 sm:p-4 flex items-center justify-between shadow-sm">
       <div>
-        <p className="text-sm text-brand-500">{title}</p>
-        <p className={`text-2xl font-bold ${accent || 'text-brand-900'}`}>{value}</p>
+        <p className="text-xs sm:text-sm text-brand-500 dark:text-brand-400 font-medium">{title}</p>
+        <p className={`text-xl sm:text-2xl font-bold ${accent || 'text-brand-900 dark:text-brand-50'}`}>{value}</p>
       </div>
-      <div className="p-3 bg-brand-100 rounded-lg text-brand-600">
-        <Users size={20} />
+      <div className="p-2.5 sm:p-3 bg-brand-100 dark:bg-brand-700/80 rounded-xl text-brand-600 dark:text-brand-200 shrink-0">
+        <Users size={18} />
       </div>
     </div>
   )
