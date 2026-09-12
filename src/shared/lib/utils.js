@@ -108,6 +108,51 @@ export function drinkAmountOf(order) {
     .reduce((sum, item) => sum + Number(item.unitPrice || 0) * Number(item.quantity || 0), 0)
 }
 
+/**
+ * Gộp các dòng order trùng (cùng món + ghi chú + trạng thái + đơn giá) để hiển thị.
+ * Trả về: { key, quantity, unitPrice, note, status, product, ids, items }
+ */
+export function mergeOrderItems(items = []) {
+  const map = new Map()
+  for (const item of items) {
+    if (!item) continue
+    const productId = item.product?.id ?? item.productId ?? ''
+    const name = item.product?.name || item.productName || ''
+    const note = (item.note || '').trim()
+    const status = item.status || ''
+    const unitPrice = Number(item.unitPrice || 0)
+    const key = `${productId}|${name}|${note}|${status}|${unitPrice}`
+    const qty = Number(item.quantity || 0)
+    if (map.has(key)) {
+      const cur = map.get(key)
+      cur.quantity += qty
+      cur.ids.push(item.id)
+      cur.items.push(item)
+    } else {
+      map.set(key, {
+        key,
+        id: item.id,
+        ids: item.id != null ? [item.id] : [],
+        items: [item],
+        quantity: qty,
+        unitPrice,
+        note: item.note || '',
+        status,
+        product: item.product || { id: productId, name, category: item.product?.category },
+      })
+    }
+  }
+  return Array.from(map.values())
+}
+
+/** Chỉ món thuộc danh mục có tên chính xác "Khác" không gửi KDS. */
+export function isKitchenItem(item) {
+  const cat = item?.product?.category
+  if (!cat) return true
+  const name = String(cat.name || '').trim().toLowerCase()
+  return name !== 'khác'
+}
+
 export function finishedBilliardSessions(order) {
   return (order?.billiardSessions || []).filter(session => session.status === 'FINISHED' || session.endTime)
 }

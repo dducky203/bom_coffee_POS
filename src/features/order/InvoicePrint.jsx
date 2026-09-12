@@ -1,5 +1,5 @@
-import React from 'react'
-import { formatCurrency, formatTimeOnly, formatPlayDuration } from '../../shared/lib/utils'
+import React, { useMemo } from 'react'
+import { formatCurrency, formatTimeOnly, formatPlayDuration, mergeOrderItems } from '../../shared/lib/utils'
 import { buildDrinkNote } from '../../shared/lib/drinkOptions'
 
 export function InvoicePrint({ 
@@ -16,41 +16,61 @@ export function InvoicePrint({
 }) {
   const printDate = orderDate ? new Date(orderDate) : new Date()
 
-  // Món đã gửi (nếu có trong đơn hàng cũ, bỏ qua các món đã hủy)
-  // cartItems: Món mới đang chọn
-  const allItems = [
-    ...orderItems
-      .filter(item => item.status !== 'CANCELLED')
-      .map(item => ({
-        id: item.id,
-        name: item.product?.name,
-        quantity: item.quantity,
-        price: item.unitPrice || (item.product?.basePrice),
-        note: item.note,
-        status: item.status
-      })),
-    ...cartItems.map(item => ({
-      id: item.id,
-      name: item.product.name,
+  const allItems = useMemo(() => {
+    const fromOrder = mergeOrderItems(
+      (orderItems || []).filter(item => item.status !== 'CANCELLED')
+    ).map(item => ({
+      id: item.key,
+      name: item.product?.name,
       quantity: item.quantity,
-      price: item.unitPrice || item.product.basePrice,
-      note: buildDrinkNote({
-        hasDrinkOptions: item.product.hasDrinkOptions !== false,
-        ice: item.options?.ice ?? 100,
-        sugar: item.options?.sugar ?? 100,
-        toppings: item.toppings || [],
-        extraNote: item.options?.extraNote,
-      }),
-      status: 'NEW'
+      price: item.unitPrice || item.product?.basePrice,
+      note: item.note,
+      status: item.status,
     }))
-  ]
+
+    const fromCart = mergeOrderItems(
+      (cartItems || []).map(item => ({
+        id: item.id,
+        product: item.product,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice || item.product?.basePrice,
+        note: buildDrinkNote({
+          hasDrinkOptions: item.product.hasDrinkOptions !== false,
+          ice: item.options?.ice ?? 100,
+          sugar: item.options?.sugar ?? 100,
+          toppings: item.toppings || [],
+          extraNote: item.options?.extraNote,
+        }),
+        status: 'NEW',
+      }))
+    ).map(item => ({
+      id: item.key,
+      name: item.product?.name,
+      quantity: item.quantity,
+      price: item.unitPrice,
+      note: item.note,
+      status: 'NEW',
+    }))
+
+    // Gộp tiếp nếu cùng tên/ghi chú/giá giữa order cũ và giỏ mới
+    const map = new Map()
+    for (const row of [...fromOrder, ...fromCart]) {
+      const key = `${row.name}|${(row.note || '').trim()}|${Number(row.price || 0)}`
+      if (map.has(key)) {
+        map.get(key).quantity += Number(row.quantity || 0)
+      } else {
+        map.set(key, { ...row })
+      }
+    }
+    return Array.from(map.values())
+  }, [orderItems, cartItems])
 
   return (
     <div className="hidden print:block w-[80mm] p-2 bg-white text-black text-[12px] font-sans mx-auto h-auto">
       <div className="text-center mb-4">
         <h1 className="text-xl font-bold uppercase tracking-wider mb-1">Bom Coffee</h1>
-        <p className="text-[11px] mb-0.5">Địa chỉ: (Chưa cập nhật)</p>
-        <p className="text-[11px] mb-2">SĐT: (Chưa cập nhật)</p>
+        <p className="text-[11px] mb-0.5">Nịnh Thành - Thọ Xuân - Thanh Hóa</p>
+        <p className="text-[11px] mb-2">SĐT: 0396.547.525</p>
         <h2 className="text-lg font-bold border-t border-b border-black py-1 my-2">HÓA ĐƠN THANH TOÁN</h2>
       </div>
 

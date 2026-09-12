@@ -37,13 +37,21 @@ function ChipGroup({ label, icon: Icon, value, onChange }) {
 
 export function DrinkOptionModal({ product, toppings, onClose, onAdd }) {
   const hasDrinkOptions = product.hasDrinkOptions !== false
-  const [options, setOptions] = useState(() => defaultDrinkOptions(toppings))
+  const isOtherCategory = String(product.category?.name || '').trim().toLowerCase() === 'khác'
+  const [options, setOptions] = useState(() => {
+    const base = defaultDrinkOptions(toppings)
+    // Danh mục "Khác" không chọn topping
+    if (String(product.category?.name || '').trim().toLowerCase() === 'khác') {
+      return { ...base, toppingIds: [] }
+    }
+    return base
+  })
 
   const chosenToppings = useMemo(
-    () => selectedToppings(toppings, options.toppingIds),
-    [toppings, options.toppingIds]
+    () => (isOtherCategory ? [] : selectedToppings(toppings, options.toppingIds)),
+    [toppings, options.toppingIds, isOtherCategory]
   )
-  const extra = extraPriceOf(chosenToppings)
+  const extra = isOtherCategory ? 0 : extraPriceOf(chosenToppings)
   const unitPrice = Number(product.basePrice) + extra
 
   const toggleTopping = (id) => {
@@ -59,7 +67,7 @@ export function DrinkOptionModal({ product, toppings, onClose, onAdd }) {
     <Modal
       isOpen
       onClose={onClose}
-      title="Tùy chỉnh đồ uống"
+      title="Chi tiết đơn món"
       subtitle={product.name}
       className="max-w-lg"
       footer={
@@ -81,7 +89,7 @@ export function DrinkOptionModal({ product, toppings, onClose, onAdd }) {
             </Button>
             <Button 
               type="button" 
-              onClick={() => onAdd(options)}
+              onClick={() => onAdd(isOtherCategory ? { ...options, toppingIds: [] } : options)}
               className="rounded-xl px-5 h-11 bg-gradient-to-r from-brand-600 to-brand-700 hover:from-brand-500 hover:to-brand-600 text-white font-bold shadow-md shadow-brand-600/20 active:scale-95 transition-all flex items-center gap-2"
             >
               <ShoppingBag size={18} />
@@ -129,57 +137,59 @@ export function DrinkOptionModal({ product, toppings, onClose, onAdd }) {
           </div>
         )}
 
-        {/* Toppings Selection */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <label className="text-xs font-bold uppercase tracking-wider text-brand-700 dark:text-brand-300">
-              Chọn Topping ({chosenToppings.length})
-            </label>
-            {extra > 0 && (
-              <span className="text-xs font-semibold text-brand-600 dark:text-brand-400">
-                + {formatCurrency(extra)}
-              </span>
-            )}
-          </div>
-          
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-48 overflow-y-auto custom-scrollbar p-0.5">
-            {toppings.map(topping => {
-              const checked = options.toppingIds.includes(topping.id)
-              const price = Number(topping.extraPrice || 0)
-              return (
-                <div
-                  key={topping.id}
-                  onClick={() => toggleTopping(topping.id)}
-                  className={`flex items-center justify-between p-3 rounded-xl border text-xs cursor-pointer select-none transition-all duration-200 ${
-                    checked 
-                      ? 'border-brand-500/80 bg-brand-500/10 dark:bg-brand-500/20 text-brand-900 dark:text-brand-50 shadow-sm ring-1 ring-brand-500/40 font-semibold' 
-                      : 'border-brand-200/80 dark:border-brand-700/60 bg-white dark:bg-brand-800/40 hover:bg-brand-50 dark:hover:bg-brand-800 text-brand-700 dark:text-brand-300'
-                  }`}
-                >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <div className={`w-4 h-4 rounded-md border flex items-center justify-center transition-colors ${
-                      checked ? 'bg-brand-600 border-brand-600 text-white' : 'border-brand-300 dark:border-brand-600 bg-white dark:bg-brand-900'
-                    }`}>
-                      {checked && <Check size={12} strokeWidth={3} />}
+        {/* Toppings — ẩn với danh mục "Khác" */}
+        {!isOtherCategory && (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold uppercase tracking-wider text-brand-700 dark:text-brand-300">
+                Chọn Topping ({chosenToppings.length})
+              </label>
+              {extra > 0 && (
+                <span className="text-xs font-semibold text-brand-600 dark:text-brand-400">
+                  + {formatCurrency(extra)}
+                </span>
+              )}
+            </div>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-48 overflow-y-auto custom-scrollbar p-0.5">
+              {toppings.map(topping => {
+                const checked = options.toppingIds.includes(topping.id)
+                const price = Number(topping.extraPrice || 0)
+                return (
+                  <div
+                    key={topping.id}
+                    onClick={() => toggleTopping(topping.id)}
+                    className={`flex items-center justify-between p-3 rounded-xl border text-xs cursor-pointer select-none transition-all duration-200 ${
+                      checked 
+                        ? 'border-brand-500/80 bg-brand-500/10 dark:bg-brand-500/20 text-brand-900 dark:text-brand-50 shadow-sm ring-1 ring-brand-500/40 font-semibold' 
+                        : 'border-brand-200/80 dark:border-brand-700/60 bg-white dark:bg-brand-800/40 hover:bg-brand-50 dark:hover:bg-brand-800 text-brand-700 dark:text-brand-300'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className={`w-4 h-4 rounded-md border flex items-center justify-center transition-colors ${
+                        checked ? 'bg-brand-600 border-brand-600 text-white' : 'border-brand-300 dark:border-brand-600 bg-white dark:bg-brand-900'
+                      }`}>
+                        {checked && <Check size={12} strokeWidth={3} />}
+                      </div>
+                      <span className="truncate">{topping.name}</span>
+                      {topping.defaultTopping && (
+                        <span className="shrink-0 text-[9px] uppercase px-1.5 py-0.5 rounded bg-brand-200/60 dark:bg-brand-700 text-brand-700 dark:text-brand-300 font-bold">
+                          Mặc định
+                        </span>
+                      )}
                     </div>
-                    <span className="truncate">{topping.name}</span>
-                    {topping.defaultTopping && (
-                      <span className="shrink-0 text-[9px] uppercase px-1.5 py-0.5 rounded bg-brand-200/60 dark:bg-brand-700 text-brand-700 dark:text-brand-300 font-bold">
-                        Mặc định
-                      </span>
-                    )}
+                    <span className={`shrink-0 font-bold ${checked ? 'text-brand-700 dark:text-brand-200' : 'text-brand-500'}`}>
+                      {price > 0 ? `+${formatCurrency(price)}` : 'Miễn phí'}
+                    </span>
                   </div>
-                  <span className={`shrink-0 font-bold ${checked ? 'text-brand-700 dark:text-brand-200' : 'text-brand-500'}`}>
-                    {price > 0 ? `+${formatCurrency(price)}` : 'Miễn phí'}
-                  </span>
-                </div>
-              )
-            })}
-            {toppings.length === 0 && (
-              <p className="text-xs text-brand-400 text-center py-4 col-span-2">Chưa có topping nào</p>
-            )}
+                )
+              })}
+              {toppings.length === 0 && (
+                <p className="text-xs text-brand-400 text-center py-4 col-span-2">Chưa có topping nào</p>
+              )}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Extra Note Input */}
         <div className="space-y-1.5">

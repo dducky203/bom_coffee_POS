@@ -2,7 +2,7 @@ import React from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useParams, useNavigate } from 'react-router-dom'
 import { historyApi } from '../../shared/lib/api'
-import { drinkAmountOf, drinkCountOf, durationSecondsBetween, finishedBilliardSessions, formatCurrency, formatDateTime, formatPlayDuration, formatTimeOnly, orderContentSummary } from '../../shared/lib/utils'
+import { drinkAmountOf, drinkCountOf, durationSecondsBetween, finishedBilliardSessions, formatCurrency, formatDateTime, formatPlayDuration, formatTimeOnly, mergeOrderItems, orderContentSummary } from '../../shared/lib/utils'
 import { Button } from '../../shared/components/Button'
 import { Card, CardContent } from '../../shared/components/Card'
 import { Badge } from '../../shared/components/Badge'
@@ -193,12 +193,12 @@ export function OrderDetailPage() {
         <CardContent className="p-6">
           <h2 className="text-lg font-bold text-brand-900 mb-4">Danh sách món {drinksCount > 0 ? `(${drinksCount} nước)` : ''}</h2>
           <div className="space-y-3">
-            {order.items?.length ? order.items.map((item) => {
+            {order.items?.length ? mergeOrderItems(order.items).map((item) => {
               const itemStatus = itemStatusLabel(item.status)
               const isCancelled = item.status === 'CANCELLED'
               return (
                 <div
-                  key={item.id}
+                  key={item.key}
                   className={`flex items-start justify-between p-4 rounded-lg border ${
                     isCancelled ? 'bg-gray-50 border-gray-200' : 'bg-white border-brand-200'
                   }`}

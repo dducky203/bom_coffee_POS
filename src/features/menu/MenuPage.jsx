@@ -289,7 +289,10 @@ export function MenuPage() {
               <div key={cat.id} className="px-4 py-3 flex items-center justify-between gap-3">
                 <div>
                   <p className="font-medium">{cat.name}</p>
-                  <p className="text-xs text-brand-500">Thứ tự {cat.sortOrder} · {cat.active ? 'Hiện' : 'Ẩn'}</p>
+                  <p className="text-xs text-brand-500">
+                    Thứ tự {cat.sortOrder} · {cat.active ? 'Hiện' : 'Ẩn'}
+                    {String(cat.name || '').trim().toLowerCase() === 'khác' ? ' · Không qua KDS' : ''}
+                  </p>
                 </div>
                 <div className="flex gap-1">
                   <button className="p-2 text-brand-600 hover:bg-brand-50 rounded-lg" onClick={() => { setError(''); setCategoryForm({ id: cat.id, name: cat.name, sortOrder: cat.sortOrder, active: cat.active }) }}>

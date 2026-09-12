@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { ConfirmModal } from '../../shared/components/ConfirmModal'
 import { kdsApi } from '../../shared/lib/api'
 import { audioService } from '../../shared/lib/audioService'
 import { buildOrderAnnounceText } from '../../shared/lib/orderAnnounce'
@@ -26,6 +27,8 @@ import { format } from 'date-fns'
 import { vi } from 'date-fns/locale'
 
 const DONE_PAGE_SIZE = 8
+
+// cancelTarget: { items, tableName, message } | null
 
 function tableNameOf(item) {
   return item.order?.table?.name || `Đơn #${item.order?.id || item.id}`
@@ -66,6 +69,7 @@ export function KdsPage() {
   const [hideDoneColumn, setHideDoneColumn] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [now, setNow] = useState(Date.now())
+  const [cancelTarget, setCancelTarget] = useState(null) // { items, message }
 
   // Ticking clock for accurate wait time calculation every 20s
   useEffect(() => {
@@ -215,7 +219,23 @@ export function KdsPage() {
   const isFocusedTwoCol = activeTab === 'ALL' && hideDoneColumn
 
   return (
-    <div className="h-full min-h-0 flex flex-col gap-3">
+    <>
+      <ConfirmModal
+        isOpen={!!cancelTarget}
+        onClose={() => setCancelTarget(null)}
+        onConfirm={() => {
+          if (cancelTarget) {
+            updateGroupStatus.mutate({ itemsToUpdate: cancelTarget.items, status: 'CANCELLED' })
+            setCancelTarget(null)
+          }
+        }}
+        title="Xác nhận hủy món"
+        message={cancelTarget?.message || ''}
+        confirmText="Xác nhận hủy"
+        cancelText="Không hủy"
+        isDestructive
+      />
+      <div className="h-full min-h-0 flex flex-col gap-3">
       {/* Top Header & Toolbar */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 shrink-0 pb-1">
         <div>
@@ -393,6 +413,7 @@ export function KdsPage() {
               isUpdating={updateGroupStatus.isPending}
               now={now}
               isSingleTab={isSingleTab}
+              setCancelTarget={setCancelTarget}
             />
           </div>
         )}
@@ -410,6 +431,7 @@ export function KdsPage() {
               isUpdating={updateGroupStatus.isPending}
               now={now}
               isSingleTab={isSingleTab}
+              setCancelTarget={setCancelTarget}
             />
           </div>
         )}
@@ -427,11 +449,13 @@ export function KdsPage() {
               onLoadMore={() => setDoneLimit(n => n + DONE_PAGE_SIZE)}
               now={now}
               isSingleTab={isSingleTab}
+              setCancelTarget={setCancelTarget}
             />
           </div>
         )}
       </div>
     </div>
+    </>
   )
 }
 
@@ -447,7 +471,8 @@ function Column({
   visibleLimit, 
   onLoadMore,
   now,
-  isSingleTab = false
+  isSingleTab = false,
+  setCancelTarget
 }) {
   const sortedGroups = useMemo(() => groupItems(items, status), [items, status])
   const visibleGroups = visibleLimit ? sortedGroups.slice(0, visibleLimit) : sortedGroups
@@ -566,16 +591,17 @@ function Column({
                         </button>
                         <button
                           type="button"
-                          onClick={() => {
-                            if (window.confirm(`Hủy ${group.items.length} món của ${group.tableName}? (Hết hàng / không làm được)`)) {
-                              onUpdate({ itemsToUpdate: group.items, status: 'CANCELLED' })
-                            }
-                          }}
+                          onClick={() => setCancelTarget({
+                            items: group.items,
+                            message: `Hủy ${group.items.length} món của ${group.tableName}?
+
+Lý do: Hết hàng / không làm được`,
+                          })}
                           disabled={isUpdating}
                           className="w-full h-9 justify-center text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-950/40 hover:bg-red-100 dark:hover:bg-red-900/50 border border-red-200 dark:border-red-800 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all disabled:opacity-50"
                         >
                           <Ban size={15} />
-                          <span>Hủy món (hết hàng)</span>
+                          <span>Hủy món</span>
                         </button>
                       </div>
                     )}
@@ -593,16 +619,15 @@ function Column({
                         </button>
                         <button
                           type="button"
-                          onClick={() => {
-                            if (window.confirm(`Hủy ${group.items.length} món đang làm của ${group.tableName}?`)) {
-                              onUpdate({ itemsToUpdate: group.items, status: 'CANCELLED' })
-                            }
-                          }}
+                          onClick={() => setCancelTarget({
+                            items: group.items,
+                            message: `Hủy ${group.items.length} món đang làm của ${group.tableName}?`,
+                          })}
                           disabled={isUpdating}
                           className="w-full h-9 justify-center text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-950/40 hover:bg-red-100 dark:hover:bg-red-900/50 border border-red-200 dark:border-red-800 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all disabled:opacity-50"
                         >
                           <Ban size={15} />
-                          <span>Hủy món (hết hàng)</span>
+                          <span>Hủy món</span>
                         </button>
                       </div>
                     )}

@@ -181,7 +181,7 @@ public class OrderServiceImpl implements OrderService {
         }
 
         Set<Long> productIds = reqs.stream().map(AddItemRequest::getProductId).collect(Collectors.toSet());
-        Map<Long, Product> products = productRepository.findAllById(productIds).stream()
+        Map<Long, Product> products = productRepository.findByIdIn(productIds).stream()
                 .collect(Collectors.toMap(Product::getId, p -> p));
 
         Set<Long> toppingIds = reqs.stream()
@@ -196,24 +196,84 @@ public class OrderServiceImpl implements OrderService {
                         .collect(Collectors.toMap(Topping::getId, t -> t, (a, b) -> a));
 
         String updatedBy = currentUser != null ? currentUser.getUsername() : null;
-        List<OrderItem> toSave = new ArrayList<>(reqs.size());
-        for (AddItemRequest req : reqs) {
-            toSave.add(buildOrderItem(order, req, products, toppingsById, updatedBy));
-        }
-
-        List<OrderItem> saved = orderItemRepository.saveAll(toSave);
         if (order.getItems() == null) {
             order.setItems(new ArrayList<>());
         }
-        order.getItems().addAll(saved);
+
+        List<OrderItem> newItems = new ArrayList<>();
+        List<OrderItem> mergedItems = new ArrayList<>();
+        List<OrderItem> qtyIncreasedForKds = new ArrayList<>();
+
+        for (AddItemRequest req : reqs) {
+            Product product = products.get(req.getProductId());
+            if (product == null) {
+                throw new ResourceNotFoundException("Product", req.getProductId());
+            }
+
+            int ice = normalizePercent(req.getIcePercent(), product.isHasDrinkOptions());
+            int sugar = normalizePercent(req.getSugarPercent(), product.isHasDrinkOptions());
+            List<Topping> toppings = List.of();
+            if (req.getToppingIds() != null && !req.getToppingIds().isEmpty()) {
+                toppings = req.getToppingIds().stream()
+                        .map(toppingsById::get)
+                        .filter(Objects::nonNull)
+                        .toList();
+            }
+            BigDecimal extra = toppings.stream()
+                    .map(t -> t.getExtraPrice() != null ? t.getExtraPrice() : BigDecimal.ZERO)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+            String note = buildItemNote(product.isHasDrinkOptions(), ice, sugar, toppings, req.getNote());
+            BigDecimal basePrice = product.getBasePrice() != null ? product.getBasePrice() : BigDecimal.ZERO;
+            BigDecimal unitPrice = basePrice.add(extra);
+            int qty = req.getQuantity() != null ? req.getQuantity() : 1;
+            OrderItemStatus targetStatus = requiresKitchen(product)
+                    ? OrderItemStatus.PENDING
+                    : OrderItemStatus.SERVED;
+
+            OrderItem existing = findMergeableItem(order.getItems(), product.getId(), note, unitPrice, targetStatus);
+            if (existing != null) {
+                existing.setQuantity((existing.getQuantity() != null ? existing.getQuantity() : 0) + qty);
+                existing.setUpdatedBy(updatedBy);
+                if (!mergedItems.contains(existing)) {
+                    mergedItems.add(existing);
+                }
+                if (requiresKitchen(product) && existing.getStatus() == OrderItemStatus.PENDING) {
+                    if (!qtyIncreasedForKds.contains(existing)) {
+                        qtyIncreasedForKds.add(existing);
+                    }
+                }
+            } else {
+                OrderItem item = new OrderItem();
+                item.setOrder(order);
+                item.setProduct(product);
+                item.setQuantity(qty);
+                item.setUnitPrice(unitPrice);
+                item.setNote(note);
+                item.setIcePercent(product.isHasDrinkOptions() ? ice : null);
+                item.setSugarPercent(product.isHasDrinkOptions() ? sugar : null);
+                item.setStatus(targetStatus);
+                item.setUpdatedBy(updatedBy);
+                order.getItems().add(item);
+                newItems.add(item);
+            }
+        }
+
+        List<OrderItem> savedNew = newItems.isEmpty() ? List.of() : orderItemRepository.saveAll(newItems);
+        if (!mergedItems.isEmpty()) {
+            orderItemRepository.saveAll(mergedItems);
+        }
+
         if (order.getDiscountAmount() == null) {
             order.setDiscountAmount(BigDecimal.ZERO);
         }
         order.recalculate();
         orderRepository.save(order);
 
-        for (OrderItem item : saved) {
+        for (OrderItem item : savedNew) {
             Product product = item.getProduct();
+            if (!requiresKitchen(product)) {
+                continue;
+            }
             notificationService.broadcastKdsUpdate(
                 KdsNotificationDTO.builder()
                     .type("NEW_ITEM")
@@ -227,48 +287,77 @@ public class OrderServiceImpl implements OrderService {
                     .build()
             );
         }
-        return saved;
+        // Số lượng tăng trên món đang chờ — báo lại KDS với số lượng mới
+        for (OrderItem item : qtyIncreasedForKds) {
+            Product product = item.getProduct();
+            notificationService.broadcastKdsUpdate(
+                KdsNotificationDTO.builder()
+                    .type("NEW_ITEM")
+                    .orderId(order.getId())
+                    .tableId(order.getTable().getId())
+                    .tableName(order.getTable().getName())
+                    .itemId(item.getId())
+                    .productName(product != null ? product.getName() : null)
+                    .quantity(item.getQuantity())
+                    .note(item.getNote())
+                    .build()
+            );
+        }
+
+        List<OrderItem> result = new ArrayList<>();
+        result.addAll(savedNew);
+        for (OrderItem merged : mergedItems) {
+            if (!result.contains(merged)) {
+                result.add(merged);
+            }
+        }
+        return result;
     }
 
-    private OrderItem buildOrderItem(
-            Order order,
-            AddItemRequest req,
-            Map<Long, Product> products,
-            Map<Long, Topping> toppingsById,
-            String updatedBy) {
-        Product product = products.get(req.getProductId());
-        if (product == null) {
-            throw new ResourceNotFoundException("Product", req.getProductId());
+    /** Cộng dồn nếu trùng sản phẩm + ghi chú + đơn giá + cùng trạng thái có thể gộp (PENDING hoặc SERVED). */
+    private OrderItem findMergeableItem(
+            List<OrderItem> items,
+            Long productId,
+            String note,
+            BigDecimal unitPrice,
+            OrderItemStatus targetStatus) {
+        if (items == null || productId == null) {
+            return null;
         }
-
-        int ice = normalizePercent(req.getIcePercent(), product.isHasDrinkOptions());
-        int sugar = normalizePercent(req.getSugarPercent(), product.isHasDrinkOptions());
-
-        List<Topping> toppings = List.of();
-        if (req.getToppingIds() != null && !req.getToppingIds().isEmpty()) {
-            toppings = req.getToppingIds().stream()
-                    .map(toppingsById::get)
-                    .filter(Objects::nonNull)
-                    .toList();
+        String noteKey = note == null ? "" : note.trim();
+        for (OrderItem item : items) {
+            if (item.getStatus() == OrderItemStatus.CANCELLED) {
+                continue;
+            }
+            if (item.getStatus() != targetStatus) {
+                continue;
+            }
+            if (item.getProduct() == null || !productId.equals(item.getProduct().getId())) {
+                continue;
+            }
+            String existingNote = item.getNote() == null ? "" : item.getNote().trim();
+            if (!noteKey.equals(existingNote)) {
+                continue;
+            }
+            BigDecimal existingPrice = item.getUnitPrice() != null ? item.getUnitPrice() : BigDecimal.ZERO;
+            if (existingPrice.compareTo(unitPrice != null ? unitPrice : BigDecimal.ZERO) != 0) {
+                continue;
+            }
+            return item;
         }
+        return null;
+    }
 
-        BigDecimal extra = toppings.stream()
-                .map(t -> t.getExtraPrice() != null ? t.getExtraPrice() : BigDecimal.ZERO)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-        String note = buildItemNote(product.isHasDrinkOptions(), ice, sugar, toppings, req.getNote());
-        BigDecimal basePrice = product.getBasePrice() != null ? product.getBasePrice() : BigDecimal.ZERO;
-
-        OrderItem item = new OrderItem();
-        item.setOrder(order);
-        item.setProduct(product);
-        item.setQuantity(req.getQuantity() != null ? req.getQuantity() : 1);
-        item.setUnitPrice(basePrice.add(extra));
-        item.setNote(note);
-        item.setIcePercent(product.isHasDrinkOptions() ? ice : null);
-        item.setSugarPercent(product.isHasDrinkOptions() ? sugar : null);
-        item.setStatus(OrderItemStatus.PENDING);
-        item.setUpdatedBy(updatedBy);
-        return item;
+    /**
+     * Món cần pha chế / làm bếp mới đẩy KDS.
+     * Chỉ danh mục có tên chính xác "Khác" mới tính thẳng vào hóa đơn.
+     */
+    private boolean requiresKitchen(Product product) {
+        if (product == null || product.getCategory() == null) {
+            return true;
+        }
+        String name = product.getCategory().getName();
+        return name == null || !name.trim().equalsIgnoreCase("Khác");
     }
 
     @Override

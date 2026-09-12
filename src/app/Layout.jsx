@@ -90,9 +90,11 @@ export function Layout() {
       {/* Mobile Top Header */}
       <header className="md:hidden h-14 bg-white/90 dark:bg-brand-900/90 backdrop-blur-md border-b border-brand-200/60 dark:border-brand-800 flex items-center justify-between px-4 shrink-0 z-40 shadow-sm print-hidden">
         <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-brand-600 via-brand-700 to-amber-800 flex items-center justify-center text-white font-black shadow-md shadow-brand-700/20">
-            <Coffee size={18} />
-          </div>
+          <img
+            src="/images/logo.png"
+            alt="Bom Coffee"
+            className="w-9 h-9 rounded-xl object-cover shadow-md"
+          />
           <div>
             <span className="font-extrabold text-base text-brand-900 dark:text-brand-50 tracking-tight block leading-none">Bom Coffee</span>
             <span className="text-[10px] font-bold text-brand-500 uppercase tracking-widest">POS System</span>
@@ -125,9 +127,11 @@ export function Layout() {
         
         {/* Desktop Brand Logo Header */}
         <div className="hidden md:flex items-center justify-center lg:justify-start lg:px-3 mb-6 shrink-0">
-          <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-brand-600 via-brand-700 to-amber-800 flex items-center justify-center text-white font-black text-xl shadow-lg shadow-brand-700/30 ring-2 ring-brand-400/20 shrink-0">
-            <Coffee size={22} />
-          </div>
+          <img
+            src="/images/logo.png"
+            alt="Bom Coffee"
+            className="w-11 h-11 rounded-2xl object-cover shadow-lg ring-2 ring-brand-400/20 shrink-0"
+          />
           <div className="ml-3 hidden lg:block">
             <h1 className="font-black text-lg text-brand-900 dark:text-brand-50 tracking-tight leading-snug">
               Bom Coffee
