@@ -142,5 +142,11 @@ public class HistoryServiceImpl implements HistoryService {
                 }
             }
         }
+        if (order.getPayments() != null) {
+            for (var payment : order.getPayments()) {
+                payment.getMethod();
+                payment.getAmount();
+            }
+        }
     }
 }

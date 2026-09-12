@@ -1,6 +1,7 @@
 package com.bomcoffee.pos.order.entity;
 
 import com.bomcoffee.pos.billiard.entity.BilliardSession;
+import com.bomcoffee.pos.common.enums.OrderItemStatus;
 import com.bomcoffee.pos.common.enums.OrderStatus;
 import com.bomcoffee.pos.payment.entity.Payment;
 import com.bomcoffee.pos.table.entity.RestaurantTable;
@@ -90,6 +91,7 @@ public class Order {
             items = new ArrayList<>();
         }
         BigDecimal itemsTotal = items.stream()
+                .filter(i -> i.getStatus() != OrderItemStatus.CANCELLED)
                 .map(i -> {
                     BigDecimal price = i.getUnitPrice() != null ? i.getUnitPrice() : BigDecimal.ZERO;
                     int qty = i.getQuantity() != null ? i.getQuantity() : 0;

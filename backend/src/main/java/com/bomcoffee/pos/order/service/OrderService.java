@@ -16,6 +16,9 @@ public interface OrderService {
     Order createOrder(CreateOrderRequest req, User currentUser);
     Order submitOrder(SubmitOrderRequest req, User currentUser);
     OrderItem addItemToOrder(Long orderId, AddItemRequest req, User currentUser);
-    void removeItemFromOrder(Long orderId, Long itemId);
+    /** Hủy 1 món đã gửi bếp (hết hàng / khách đổi món) — soft cancel, giữ lịch sử. */
+    Order cancelItem(Long orderId, Long itemId, User currentUser);
+    /** Hủy cả đơn OPEN khi khách về / không dùng bàn nữa. */
+    Order cancelOrder(Long orderId, User currentUser);
     List<Order> getAllOpenOrders();
 }

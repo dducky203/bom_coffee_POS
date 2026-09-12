@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { CheckCheck, CheckCircle2, ChevronLeft, Coffee, Flame, Minus, PanelRightClose, PanelRightOpen, Plus, Printer, Search, ShoppingBag, Trash2, X } from 'lucide-react'
+import { Ban, CheckCheck, CheckCircle2, ChevronLeft, Coffee, Flame, Minus, MoreHorizontal, PanelRightClose, PanelRightOpen, Plus, Printer, Search, ShoppingBag, Trash2, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import QRCode from 'react-qr-code'
 import { useNavigate, useParams } from 'react-router-dom'
@@ -7,6 +7,7 @@ import { useCartStore } from '../../app/store'
 import { Badge } from '../../shared/components/Badge'
 import { Button } from '../../shared/components/Button'
 import { LoadingPage } from '../../shared/components/Loading'
+import { Modal } from '../../shared/components/Modal'
 import { billiardApi, kdsApi, orderApi } from '../../shared/lib/api'
 import { buildDrinkNote } from '../../shared/lib/drinkOptions'
 import { categoriesQuery, productsQuery, tablesQuery, toppingsQuery } from '../../shared/lib/queries'
@@ -25,6 +26,7 @@ function itemStatusLabel(status) {
     case 'IN_PROGRESS': return 'Đang làm'
     case 'DONE': return 'Đã xong'
     case 'SERVED': return 'Đã phục vụ'
+    case 'CANCELLED': return 'Đã hủy'
     default: return status
   }
 }
@@ -44,6 +46,9 @@ export function OrderPage() {
   const [selectedProduct, setSelectedProduct] = useState(null)
   const [isCartOpen, setIsCartOpen] = useState(false)
   const [isDesktopCartVisible, setIsDesktopCartVisible] = useState(true)
+  const [cancelItemTarget, setCancelItemTarget] = useState(null)
+  const [showCancelOrderModal, setShowCancelOrderModal] = useState(false)
+  const [showCartOptions, setShowCartOptions] = useState(false)
 
   const cart = useCartStore(state => state.items)
   const addItem = useCartStore(state => state.addItem)
@@ -202,6 +207,39 @@ export function OrderPage() {
     onError: (err) => setError(err.message),
   })
 
+  const cancelOrderItem = useMutation({
+    mutationFn: (itemId) => orderApi.cancelItem(order.id, itemId),
+    onSuccess: async () => {
+      setCancelItemTarget(null)
+      setError('')
+      await queryClient.invalidateQueries({ queryKey: ['order-by-table', numericTableId] })
+      await queryClient.invalidateQueries({ queryKey: ['kds-queue'] })
+    },
+    onError: (err) => setError(err.message),
+  })
+
+  const cancelWholeOrder = useMutation({
+    mutationFn: () => orderApi.cancelOrder(order.id),
+    onSuccess: async () => {
+      setShowCancelOrderModal(false)
+      setError('')
+      clearCart()
+      await queryClient.invalidateQueries({ queryKey: ['tables'] })
+      await queryClient.invalidateQueries({ queryKey: ['kds-queue'] })
+      await queryClient.invalidateQueries({ queryKey: ['billiard-current', numericTableId] })
+      navigate('/')
+    },
+    onError: (err) => setError(err.message),
+  })
+
+  const activeOrderItems = useMemo(
+    () => (order?.items || []).filter(i => i.status !== 'CANCELLED'),
+    [order]
+  )
+  const cancelledOrderItems = useMemo(
+    () => (order?.items || []).filter(i => i.status === 'CANCELLED'),
+    [order]
+  )
   const isBilliard = table?.type === 'BILLIARD'
   const finishedSessions = useMemo(
     () => (order?.billiardSessions || []).filter(s => {
@@ -459,16 +497,56 @@ export function OrderPage() {
                 <Badge className="bg-brand-600 text-white font-bold">{cart.length}</Badge>
               </div>
 
-              {/* Desktop Cart Close/Collapse Button */}
-              <button
-                type="button"
-                onClick={() => setIsDesktopCartVisible(false)}
-                className="hidden lg:flex items-center gap-1 px-2.5 py-1 rounded-lg text-brand-500 hover:text-brand-800 dark:text-brand-400 dark:hover:text-brand-100 hover:bg-brand-100 dark:hover:bg-brand-700 transition-colors text-xs font-semibold"
-                title="Ẩn giỏ hàng"
-              >
-                <PanelRightClose size={18} />
-                <span>Ẩn</span>
-              </button>
+              <div className="flex items-center gap-1">
+                {order && (
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setShowCartOptions(v => !v)}
+                      className="p-1.5 rounded-lg text-brand-400 hover:text-brand-700 dark:hover:text-brand-200 hover:bg-brand-100 dark:hover:bg-brand-700 transition-colors"
+                      title="Tùy chọn"
+                      aria-label="Tùy chọn đơn"
+                    >
+                      <MoreHorizontal size={18} />
+                    </button>
+                    {showCartOptions && (
+                      <>
+                        <button
+                          type="button"
+                          className="fixed inset-0 z-10 cursor-default"
+                          aria-label="Đóng tùy chọn"
+                          onClick={() => setShowCartOptions(false)}
+                        />
+                        <div className="absolute right-0 top-full mt-1 z-20 min-w-[160px] rounded-xl border border-brand-200 dark:border-brand-700 bg-white dark:bg-brand-900 shadow-lg py-1 overflow-hidden">
+                          <button
+                            type="button"
+                            disabled={cancelWholeOrder.isPending}
+                            onClick={() => {
+                              setShowCartOptions(false)
+                              setShowCancelOrderModal(true)
+                            }}
+                            className="w-full flex items-center gap-2 px-3 py-2 text-left text-xs font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors disabled:opacity-50"
+                          >
+                            <Ban size={14} />
+                            Hủy cả đơn
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+
+                {/* Desktop Cart Close/Collapse Button */}
+                <button
+                  type="button"
+                  onClick={() => setIsDesktopCartVisible(false)}
+                  className="hidden lg:flex items-center gap-1 px-2.5 py-1 rounded-lg text-brand-500 hover:text-brand-800 dark:text-brand-400 dark:hover:text-brand-100 hover:bg-brand-100 dark:hover:bg-brand-700 transition-colors text-xs font-semibold"
+                  title="Ẩn giỏ hàng"
+                >
+                  <PanelRightClose size={18} />
+                  <span>Ẩn</span>
+                </button>
+              </div>
             </div>
             <input
               type="text"
@@ -552,18 +630,18 @@ export function OrderPage() {
                 <div className="flex items-center justify-between gap-2 pb-1 border-b border-brand-200/50 dark:border-brand-800/60">
                   <div>
                     <p className="text-xs font-bold text-brand-800 dark:text-brand-200 uppercase tracking-wide">
-                      Món đã gửi bếp ({order.items.length})
+                      Món đã gửi bếp ({activeOrderItems.length})
                     </p>
                     <p className="text-[11px] text-brand-500 dark:text-brand-400">
-                      Bấm "Ra món" khi bưng đồ ra bàn
+                      Hết hàng → Hủy món · Bưng ra bàn → Ra món
                     </p>
                   </div>
-                  {order.items.some(i => i.status !== 'DONE') && (
+                  {activeOrderItems.some(i => i.status !== 'DONE' && i.status !== 'SERVED') && (
                     <button
                       type="button"
                       disabled={updateAllItemsStatus.isPending}
                       onClick={() => {
-                        const unfinished = order.items.filter(i => i.status !== 'DONE')
+                        const unfinished = activeOrderItems.filter(i => i.status !== 'DONE' && i.status !== 'SERVED')
                         updateAllItemsStatus.mutate({ items: unfinished, status: 'DONE' })
                       }}
                       className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950/60 hover:bg-emerald-200 dark:hover:bg-emerald-900/80 rounded-lg border border-emerald-300 dark:border-emerald-700/60 transition-colors disabled:opacity-50 shrink-0"
@@ -576,8 +654,8 @@ export function OrderPage() {
                 </div>
 
                 <div className="space-y-2">
-                  {order.items.map(item => {
-                    const isDone = item.status === 'DONE'
+                  {activeOrderItems.map(item => {
+                    const isDone = item.status === 'DONE' || item.status === 'SERVED'
                     const isPending = item.status === 'PENDING'
                     return (
                       <div
@@ -613,6 +691,17 @@ export function OrderPage() {
                               {itemStatusLabel(item.status)}
                             </span>
 
+                            <button
+                              type="button"
+                              disabled={cancelOrderItem.isPending}
+                              onClick={() => setCancelItemTarget(item)}
+                              className="p-1.5 text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-lg transition-all active:scale-95 disabled:opacity-50"
+                              title="Hủy món (hết hàng / khách đổi món)"
+                              aria-label="Hủy món"
+                            >
+                              <X size={15} strokeWidth={2.5} />
+                            </button>
+
                             {!isDone && (
                               <button
                                 type="button"
@@ -630,6 +719,25 @@ export function OrderPage() {
                       </div>
                     )
                   })}
+
+                  {cancelledOrderItems.length > 0 && (
+                    <div className="pt-1 space-y-1.5 border-t border-dashed border-brand-200 dark:border-brand-700">
+                      <p className="text-[10px] font-bold uppercase tracking-wide text-brand-400">
+                        Đã hủy ({cancelledOrderItems.length})
+                      </p>
+                      {cancelledOrderItems.map(item => (
+                        <div
+                          key={item.id}
+                          className="px-2.5 py-1.5 rounded-lg bg-brand-100/40 dark:bg-brand-900/30 border border-brand-200/50 dark:border-brand-800 opacity-60"
+                        >
+                          <span className="text-xs text-brand-500 line-through">
+                            {item.quantity}x {item.product?.name}
+                          </span>
+                          <span className="ml-2 text-[10px] font-bold text-red-500">Đã hủy</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -803,6 +911,65 @@ export function OrderPage() {
           />
         )}
       </div>
+
+      <Modal
+        isOpen={!!cancelItemTarget}
+        onClose={() => setCancelItemTarget(null)}
+        title="Hủy món đã gửi bếp?"
+        subtitle="Dùng khi hết hàng hoặc khách muốn đổi món khác"
+        footer={
+          <div className="flex gap-2 justify-end">
+            <Button variant="outline" onClick={() => setCancelItemTarget(null)}>
+              Không
+            </Button>
+            <Button
+              className="bg-red-600 hover:bg-red-700 text-white border-red-600"
+              disabled={cancelOrderItem.isPending}
+              onClick={() => cancelOrderItem.mutate(cancelItemTarget.id)}
+            >
+              {cancelOrderItem.isPending ? 'Đang hủy...' : 'Xác nhận hủy món'}
+            </Button>
+          </div>
+        }
+      >
+        {cancelItemTarget && (
+          <p className="text-sm text-brand-700 dark:text-brand-200">
+            Hủy <span className="font-bold">{cancelItemTarget.quantity}x {cancelItemTarget.product?.name}</span>.
+            Món sẽ biến mất khỏi KDS, tiền sẽ được trừ khỏi hóa đơn. Khách có thể order món khác ngay sau đó.
+          </p>
+        )}
+      </Modal>
+
+      <Modal
+        isOpen={showCancelOrderModal}
+        onClose={() => setShowCancelOrderModal(false)}
+        title="Hủy cả đơn hàng?"
+        subtitle="Khách muốn về / không dùng bàn nữa"
+        footer={
+          <div className="flex gap-2 justify-end">
+            <Button variant="outline" onClick={() => setShowCancelOrderModal(false)}>
+              Giữ đơn
+            </Button>
+            <Button
+              className="bg-red-600 hover:bg-red-700 text-white border-red-600"
+              disabled={cancelWholeOrder.isPending}
+              onClick={() => cancelWholeOrder.mutate()}
+            >
+              {cancelWholeOrder.isPending ? 'Đang hủy...' : 'Xác nhận hủy đơn'}
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-2 text-sm text-brand-700 dark:text-brand-200">
+          <p>Toàn bộ món chưa thanh toán sẽ bị hủy, bàn <span className="font-bold">{table?.name}</span> sẽ trống lại.</p>
+          {isBilliard && (
+            <p className="text-amber-700 dark:text-amber-300 font-medium">
+              Phiên bi-a đang chơi (nếu có) sẽ kết thúc và không tính tiền.
+            </p>
+          )}
+          <p className="text-xs text-brand-500">Đơn hủy vẫn lưu trong lịch sử với trạng thái &quot;Đã hủy&quot;.</p>
+        </div>
+      </Modal>
 
       <InvoicePrint
         table={table}

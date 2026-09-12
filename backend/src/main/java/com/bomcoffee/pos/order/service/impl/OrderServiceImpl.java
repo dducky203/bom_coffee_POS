@@ -272,8 +272,12 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
-    public void removeItemFromOrder(Long orderId, Long itemId) {
+    public Order cancelItem(Long orderId, Long itemId, User currentUser) {
         Order order = loadOrderGraph(orderId);
+        if (order.getStatus() != OrderStatus.OPEN) {
+            throw new BusinessException("Chỉ hủy món trên đơn đang mở", "ORDER_CLOSED");
+        }
+
         OrderItem item = order.getItems() == null ? null : order.getItems().stream()
                 .filter(i -> i.getId().equals(itemId))
                 .findFirst()
@@ -281,11 +285,129 @@ public class OrderServiceImpl implements OrderService {
         if (item == null) {
             throw new ResourceNotFoundException("OrderItem", itemId);
         }
+        if (item.getStatus() == OrderItemStatus.CANCELLED) {
+            throw new BusinessException("Món này đã được hủy trước đó", "ITEM_ALREADY_CANCELLED");
+        }
 
-        order.getItems().remove(item);
-        orderItemRepository.delete(item);
+        item.setStatus(OrderItemStatus.CANCELLED);
+        if (currentUser != null) {
+            item.setUpdatedBy(currentUser.getUsername());
+        }
+        orderItemRepository.save(item);
         order.recalculate();
         orderRepository.save(order);
+
+        Product product = item.getProduct();
+        notificationService.broadcastKdsUpdate(
+                KdsNotificationDTO.builder()
+                        .type("STATUS_UPDATED")
+                        .orderId(order.getId())
+                        .tableId(order.getTable() != null ? order.getTable().getId() : null)
+                        .tableName(order.getTable() != null ? order.getTable().getName() : null)
+                        .itemId(item.getId())
+                        .productName(product != null ? product.getName() : null)
+                        .quantity(item.getQuantity())
+                        .status(OrderItemStatus.CANCELLED)
+                        .build()
+        );
+
+        return getOrderById(order.getId());
+    }
+
+    @Override
+    public Order cancelOrder(Long orderId, User currentUser) {
+        Order order = loadOrderGraph(orderId);
+        if (order.getStatus() != OrderStatus.OPEN) {
+            throw new BusinessException("Đơn hàng đã đóng hoặc đã hủy", "ORDER_NOT_OPEN");
+        }
+
+        String updatedBy = currentUser != null ? currentUser.getUsername() : null;
+        if (order.getItems() != null) {
+            for (OrderItem item : order.getItems()) {
+                if (item.getStatus() == OrderItemStatus.CANCELLED) {
+                    continue;
+                }
+                item.setStatus(OrderItemStatus.CANCELLED);
+                item.setUpdatedBy(updatedBy);
+                notificationService.broadcastKdsUpdate(
+                        KdsNotificationDTO.builder()
+                                .type("STATUS_UPDATED")
+                                .orderId(order.getId())
+                                .tableId(order.getTable() != null ? order.getTable().getId() : null)
+                                .tableName(order.getTable() != null ? order.getTable().getName() : null)
+                                .itemId(item.getId())
+                                .productName(item.getProduct() != null ? item.getProduct().getName() : null)
+                                .quantity(item.getQuantity())
+                                .status(OrderItemStatus.CANCELLED)
+                                .build()
+                );
+            }
+            orderItemRepository.saveAll(order.getItems());
+        }
+
+        voidBilliardSessionsOnCancel(order);
+
+        order.setStatus(OrderStatus.CANCELLED);
+        order.setClosedAt(java.time.LocalDateTime.now());
+        order.setDiscountAmount(BigDecimal.ZERO);
+        order.recalculate();
+        orderRepository.save(order);
+
+        if (order.getTable() != null) {
+            RestaurantTable table = tableRepository.findById(order.getTable().getId())
+                    .orElse(order.getTable());
+            table.setStatus(TableStatus.EMPTY);
+            tableRepository.save(table);
+            notificationService.broadcastTableStatusUpdate(
+                    TableStatusNotificationDTO.builder()
+                            .tableId(table.getId())
+                            .status(TableStatus.EMPTY)
+                            .build()
+            );
+        }
+
+        return getOrderById(order.getId());
+    }
+
+    /** Kết thúc phiên bi-a đang chơi và không tính tiền khi hủy đơn. */
+    private void voidBilliardSessionsOnCancel(Order order) {
+        if (order.getTable() == null) {
+            return;
+        }
+        java.time.LocalDateTime now = java.time.LocalDateTime.now();
+        List<BilliardSession> toSave = new ArrayList<>();
+
+        if (order.getBilliardSessions() == null) {
+            order.setBilliardSessions(new ArrayList<>());
+        }
+
+        for (BilliardSession session : order.getBilliardSessions()) {
+            if (session.getStatus() == BilliardSessionStatus.PLAYING) {
+                session.setStatus(BilliardSessionStatus.FINISHED);
+                session.setEndTime(now);
+            }
+            session.setTotalAmount(BigDecimal.ZERO);
+            toSave.add(session);
+        }
+
+        List<BilliardSession> playingOnTable = billiardSessionRepository.findAllByTableIdAndStatus(
+                order.getTable().getId(), BilliardSessionStatus.PLAYING);
+        for (BilliardSession session : playingOnTable) {
+            if (session.getOrder() == null || order.getId().equals(session.getOrder().getId())) {
+                session.setOrder(order);
+                session.setStatus(BilliardSessionStatus.FINISHED);
+                session.setEndTime(now);
+                session.setTotalAmount(BigDecimal.ZERO);
+                if (order.getBilliardSessions().stream().noneMatch(s -> s.getId().equals(session.getId()))) {
+                    order.getBilliardSessions().add(session);
+                }
+                toSave.add(session);
+            }
+        }
+
+        if (!toSave.isEmpty()) {
+            billiardSessionRepository.saveAll(toSave);
+        }
     }
 
     @Override

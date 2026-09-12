@@ -19,7 +19,8 @@ import {
   EyeOff, 
   AlertCircle,
   Coffee,
-  Sparkles
+  Sparkles,
+  Ban
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { vi } from 'date-fns/locale'
@@ -127,8 +128,14 @@ export function KdsPage() {
   const updateGroupStatus = useMutation({
     mutationFn: ({ itemsToUpdate, status }) =>
       kdsApi.updateStatuses(itemsToUpdate.map(item => item.id), status),
-    onSuccess: (_data, { itemsToUpdate }) => {
+    onSuccess: (_data, { itemsToUpdate, status }) => {
       queryClient.invalidateQueries({ queryKey: ['kds-queue'] })
+      queryClient.invalidateQueries({ queryKey: ['tables'] })
+      queryClient.invalidateQueries({ queryKey: ['order-by-table'] })
+      if (status === 'CANCELLED') {
+        audioService.stop()
+        return
+      }
       const remaining = pendingRef.current.filter(item => !itemsToUpdate.some(moved => moved.id === item.id))
       audioService.stop()
       groupItems(remaining, 'PENDING').forEach(group => {
@@ -547,7 +554,7 @@ function Column({
 
                     {/* Action Button: Giant touch target for easy tapping */}
                     {status === 'PENDING' && (
-                      <div className="pt-1 mt-auto">
+                      <div className="pt-1 mt-auto space-y-2">
                         <button
                           type="button"
                           onClick={() => onUpdate({ itemsToUpdate: group.items, status: 'IN_PROGRESS' })}
@@ -557,11 +564,24 @@ function Column({
                           <PlayCircle size={20} />
                           <span>Bắt đầu làm ({group.items.length} món)</span>
                         </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (window.confirm(`Hủy ${group.items.length} món của ${group.tableName}? (Hết hàng / không làm được)`)) {
+                              onUpdate({ itemsToUpdate: group.items, status: 'CANCELLED' })
+                            }
+                          }}
+                          disabled={isUpdating}
+                          className="w-full h-9 justify-center text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-950/40 hover:bg-red-100 dark:hover:bg-red-900/50 border border-red-200 dark:border-red-800 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all disabled:opacity-50"
+                        >
+                          <Ban size={15} />
+                          <span>Hủy món (hết hàng)</span>
+                        </button>
                       </div>
                     )}
 
                     {status === 'IN_PROGRESS' && (
-                      <div className="pt-1 mt-auto">
+                      <div className="pt-1 mt-auto space-y-2">
                         <button
                           type="button"
                           onClick={() => onUpdate({ itemsToUpdate: group.items, status: 'DONE' })}
@@ -570,6 +590,19 @@ function Column({
                         >
                           <CheckCircle2 size={20} />
                           <span>Hoàn thành ({group.items.length} món)</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (window.confirm(`Hủy ${group.items.length} món đang làm của ${group.tableName}?`)) {
+                              onUpdate({ itemsToUpdate: group.items, status: 'CANCELLED' })
+                            }
+                          }}
+                          disabled={isUpdating}
+                          className="w-full h-9 justify-center text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-950/40 hover:bg-red-100 dark:hover:bg-red-900/50 border border-red-200 dark:border-red-800 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all disabled:opacity-50"
+                        >
+                          <Ban size={15} />
+                          <span>Hủy món (hết hàng)</span>
                         </button>
                       </div>
                     )}

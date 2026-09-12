@@ -132,8 +132,13 @@ export const authApi = {
 }
 
 export const tableApi = {
-  list: () => api.get('/tables'),
+  list: (includeInactive = false) => api.get('/tables', { params: { includeInactive } }),
   get: (id) => api.get(`/tables/${id}`),
+  zones: () => api.get('/tables/zones'),
+  create: (payload) => api.post('/tables', payload),
+  update: (id, payload) => api.put(`/tables/${id}`, payload),
+  remove: (id) => api.delete(`/tables/${id}`),
+  updateStatus: (id, status) => api.patch(`/tables/${id}/status`, { status }),
 }
 
 export const categoryApi = {
@@ -180,7 +185,11 @@ export const orderApi = {
   create: (tableId) => api.post('/orders', { tableId }),
   submit: (payload) => api.post('/orders/submit', payload),
   addItem: (orderId, payload) => api.post(`/orders/${orderId}/items`, payload),
-  removeItem: (orderId, itemId) => api.delete(`/orders/${orderId}/items/${itemId}`),
+  /** Hủy 1 món đã gửi bếp (hết hàng / đổi món) */
+  cancelItem: (orderId, itemId) => api.post(`/orders/${orderId}/items/${itemId}/cancel`),
+  removeItem: (orderId, itemId) => api.post(`/orders/${orderId}/items/${itemId}/cancel`),
+  /** Hủy cả đơn OPEN (khách về) */
+  cancelOrder: (orderId) => api.post(`/orders/${orderId}/cancel`),
   checkout: (orderId, payload) => api.post(`/orders/${orderId}/checkout`, payload),
 }
 
@@ -208,6 +217,9 @@ export const reportApi = {
   revenue: (from, to) => api.get('/reports/revenue', { params: { from, to } }),
   topProducts: (from, to) => api.get('/reports/top-products', { params: { from, to } }),
   revenueByStaff: (from, to) => api.get('/reports/revenue-by-staff', { params: { from, to } }),
+  revenueByPaymentMethod: (from, to) => api.get('/reports/revenue-by-payment-method', { params: { from, to } }),
+  revenueByTableType: (from, to) => api.get('/reports/revenue-by-table-type', { params: { from, to } }),
+  revenueByService: (from, to) => api.get('/reports/revenue-by-service', { params: { from, to } }),
 }
 
 export const historyApi = {

@@ -7,7 +7,7 @@ import { prefetchCatalog } from '../shared/lib/queries'
 import { 
   LogOut, LayoutGrid, Coffee, Clock, PieChart, CupSoda, 
   CircleDollarSign, FileText, Users, Sun, Moon, Sparkles, Shield,
-  MoreHorizontal, X
+  MoreHorizontal, X, Table2
 } from 'lucide-react'
 
 const ROLE_DISPLAY = {
@@ -64,6 +64,7 @@ export function Layout() {
       items: [
         { path: '/dashboard', label: 'Báo cáo doanh thu', icon: PieChart, roles: ['ADMIN'] },
         { path: '/menu', label: 'Món & giá bán', icon: CupSoda, roles: ['ADMIN'] },
+        { path: '/tables', label: 'Quản lý bàn', icon: Table2, roles: ['ADMIN'] },
         { path: '/pricing', label: 'Giá bàn Bi-a', icon: CircleDollarSign, roles: ['ADMIN'] },
         { path: '/staff', label: 'Quản lý nhân viên', icon: Users, roles: ['ADMIN'] },
       ]

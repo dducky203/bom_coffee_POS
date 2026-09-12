@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
@@ -95,4 +96,39 @@ public interface OrderRepository extends JpaRepository<Order, Long>, JpaSpecific
     List<Order> findRecentCompletedOrdersByTable(@Param("tableId") Long tableId, @Param("since") LocalDateTime since);
 
     Optional<Order> findFirstByTableIdAndStatusOrderByClosedAtDesc(Long tableId, OrderStatus status);
+
+    @Query("""
+            SELECT t.type, COALESCE(SUM(o.finalAmount), 0)
+            FROM Order o
+            LEFT JOIN o.table t
+            WHERE o.status IN ('COMPLETED', 'PAID')
+              AND o.closedAt >= :from AND o.closedAt < :to
+            GROUP BY t.type
+            """)
+    List<Object[]> sumFinalAmountGroupedByTableType(
+            @Param("from") LocalDateTime from,
+            @Param("to") LocalDateTime to);
+
+    @Query("""
+            SELECT COALESCE(SUM(i.unitPrice * i.quantity), 0)
+            FROM OrderItem i
+            JOIN i.order o
+            WHERE o.status IN ('COMPLETED', 'PAID')
+              AND o.closedAt >= :from AND o.closedAt < :to
+            """)
+    BigDecimal sumDrinkItemRevenue(
+            @Param("from") LocalDateTime from,
+            @Param("to") LocalDateTime to);
+
+    @Query("""
+            SELECT COALESCE(SUM(s.totalAmount), 0)
+            FROM BilliardSession s
+            JOIN s.order o
+            WHERE o.status IN ('COMPLETED', 'PAID')
+              AND o.closedAt >= :from AND o.closedAt < :to
+              AND s.totalAmount IS NOT NULL
+            """)
+    BigDecimal sumBilliardSessionRevenue(
+            @Param("from") LocalDateTime from,
+            @Param("to") LocalDateTime to);
 }

@@ -58,11 +58,31 @@ public class OrderController {
         return ResponseEntity.ok(ApiResponse.success(saved, "Thêm món thành công"));
     }
 
+    @PostMapping("/{id}/items/{itemId}/cancel")
+    public ResponseEntity<ApiResponse<Order>> cancelItem(
+            @PathVariable Long id,
+            @PathVariable Long itemId,
+            @AuthenticationPrincipal User currentUser) {
+        Order order = orderService.cancelItem(id, itemId, currentUser);
+        return ResponseEntity.ok(ApiResponse.success(order, "Đã hủy món"));
+    }
+
+    /** Giữ DELETE cũ: soft-cancel món (tương thích FE cũ). */
     @DeleteMapping("/{id}/items/{itemId}")
-    public ResponseEntity<ApiResponse<Void>> removeItem(
-            @PathVariable Long id, @PathVariable Long itemId) {
-        orderService.removeItemFromOrder(id, itemId);
-        return ResponseEntity.ok(ApiResponse.success(null, "Xóa món thành công"));
+    public ResponseEntity<ApiResponse<Order>> removeItem(
+            @PathVariable Long id,
+            @PathVariable Long itemId,
+            @AuthenticationPrincipal User currentUser) {
+        Order order = orderService.cancelItem(id, itemId, currentUser);
+        return ResponseEntity.ok(ApiResponse.success(order, "Đã hủy món"));
+    }
+
+    @PostMapping("/{id}/cancel")
+    public ResponseEntity<ApiResponse<Order>> cancelOrder(
+            @PathVariable Long id,
+            @AuthenticationPrincipal User currentUser) {
+        Order order = orderService.cancelOrder(id, currentUser);
+        return ResponseEntity.ok(ApiResponse.success(order, "Đã hủy đơn hàng"));
     }
 
     @GetMapping

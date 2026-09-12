@@ -65,6 +65,9 @@ public class SecurityConfig {
                 .requestMatchers("/api/v1/billiard-pricing/**").hasRole("ADMIN")
                 .requestMatchers("/api/v1/users/**").hasRole("ADMIN")
                 .requestMatchers("/api/v1/uploads/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.POST, "/api/v1/tables/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.PUT, "/api/v1/tables/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.DELETE, "/api/v1/tables/**").hasRole("ADMIN")
                 // All other endpoints require authentication
                 .anyRequest().authenticated()
             )

@@ -16,6 +16,6 @@ public class BomCoffeePosApplication {
 
     public static void main(String[] args) {
         SpringApplication.run(BomCoffeePosApplication.class, args);
-        System.out.println("Server running at: ");
+        System.out.println("Server running at: http://localhost:8080");
     }
 }

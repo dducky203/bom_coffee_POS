@@ -19,7 +19,7 @@ public class RestaurantTable {
     private Long id;
 
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "zone_id")
     private Zone zone;
 
@@ -36,9 +36,21 @@ public class RestaurantTable {
 
     private Integer capacity;
 
+    @Column(name = "is_active")
+    @Builder.Default
+    private Boolean active = true;
+
     @CreationTimestamp
     private LocalDateTime createdAt;
 
     @UpdateTimestamp
     private LocalDateTime updatedAt;
+
+    public boolean isActive() {
+        return active == null || Boolean.TRUE.equals(active);
+    }
+
+    public void setActive(boolean active) {
+        this.active = active;
+    }
 }

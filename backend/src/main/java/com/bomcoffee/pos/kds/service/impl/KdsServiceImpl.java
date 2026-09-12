@@ -9,6 +9,7 @@ import com.bomcoffee.pos.notification.dto.KdsNotificationDTO;
 import com.bomcoffee.pos.notification.dto.TableOrderNotificationDTO;
 import com.bomcoffee.pos.order.entity.OrderItem;
 import com.bomcoffee.pos.order.repository.OrderItemRepository;
+import com.bomcoffee.pos.order.repository.OrderRepository;
 import com.bomcoffee.pos.user.entity.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -19,6 +20,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -33,6 +35,7 @@ public class KdsServiceImpl implements KdsService {
             List.of(OrderItemStatus.PENDING, OrderItemStatus.IN_PROGRESS);
 
     private final OrderItemRepository orderItemRepository;
+    private final OrderRepository orderRepository;
     private final NotificationService notificationService;
 
     @Override
@@ -98,11 +101,37 @@ public class KdsServiceImpl implements KdsService {
         }
 
         List<OrderItem> saved = orderItemRepository.saveAll(items);
+
+        // Hủy món từ KDS → trừ tiền khỏi hóa đơn
+        if (newStatus == OrderItemStatus.CANCELLED) {
+            Set<Long> orderIds = saved.stream()
+                    .map(i -> i.getOrder() != null ? i.getOrder().getId() : null)
+                    .filter(id -> id != null)
+                    .collect(Collectors.toSet());
+            for (Long orderId : orderIds) {
+                orderRepository.findByIdWithItems(orderId).ifPresent(order -> {
+                    orderRepository.findByIdWithBilliardSessions(orderId);
+                    order.recalculate();
+                    orderRepository.save(order);
+                });
+            }
+        }
+
         notifyStatusUpdated(saved, newStatus);
         return saved;
     }
 
     private boolean isValidTransition(OrderItemStatus current, OrderItemStatus next) {
+        if (current == OrderItemStatus.CANCELLED) {
+            return false;
+        }
+        // Hủy món (hết hàng / khách đổi) từ mọi trạng thái chưa hủy
+        if (next == OrderItemStatus.CANCELLED) {
+            return current == OrderItemStatus.PENDING
+                    || current == OrderItemStatus.IN_PROGRESS
+                    || current == OrderItemStatus.DONE
+                    || current == OrderItemStatus.SERVED;
+        }
         return (current == OrderItemStatus.PENDING && next == OrderItemStatus.IN_PROGRESS)
                 || (current == OrderItemStatus.PENDING && next == OrderItemStatus.DONE)
                 || (current == OrderItemStatus.IN_PROGRESS && next == OrderItemStatus.DONE)

@@ -14,8 +14,11 @@ export const catalogOptions = {
 
 export const tablesQuery = {
   queryKey: ['tables'],
-  queryFn: tableApi.list,
-  ...catalogOptions,
+  queryFn: () => tableApi.list(false),
+  staleTime: 30_000,
+  gcTime: 60 * 60 * 1000,
+  refetchOnMount: true,
+  refetchOnWindowFocus: true,
 }
 
 export const categoriesQuery = {

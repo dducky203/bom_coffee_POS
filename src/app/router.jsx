@@ -13,6 +13,7 @@ import { BilliardPricingPage } from '../features/billiard/BilliardPricingPage'
 import { HistoryPage } from '../features/history/HistoryPage'
 import { OrderDetailPage } from '../features/history/OrderDetailPage'
 import { StaffPage } from '../features/staff/StaffPage'
+import { TablesAdminPage } from '../features/table/TablesAdminPage'
 
 export const router = createBrowserRouter([
   {
@@ -108,6 +109,14 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute allowedRoles={['ADMIN']}>
             <StaffPage />
+          </ProtectedRoute>
+        )
+      },
+      {
+        path: 'tables',
+        element: (
+          <ProtectedRoute allowedRoles={['ADMIN']}>
+            <TablesAdminPage />
           </ProtectedRoute>
         )
       },
