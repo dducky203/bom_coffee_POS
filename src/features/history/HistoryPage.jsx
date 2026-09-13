@@ -128,17 +128,17 @@ export function HistoryPage() {
     setSize(10)
   }
 
-  const inputClass = 'w-full h-10 px-3 border border-brand-200 dark:border-brand-700 rounded-lg text-sm bg-white dark:bg-brand-800 text-brand-900 dark:text-brand-50 outline-none focus:border-brand-500'
+  const inputClass = 'w-full h-10 px-2 sm:px-3 border border-brand-200 dark:border-brand-700 rounded-lg text-xs sm:text-sm bg-white dark:bg-brand-800 text-brand-900 dark:text-brand-50 outline-none focus:border-brand-500 min-w-0 truncate'
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-24 sm:pb-6">
       <div>
         <h1 className="text-2xl font-bold text-brand-900 dark:text-brand-50">Lịch sử đơn hàng</h1>
-        <p className="text-brand-500 dark:text-brand-400">Lọc theo nhiều trường và xem theo trang</p>
+        <p className="text-brand-500 dark:text-brand-400 text-xs sm:text-sm">Lọc theo nhiều trường và xem theo trang</p>
       </div>
 
       <Card>
-        <CardContent className="p-4 space-y-4">
+        <CardContent className="p-3.5 sm:p-4 space-y-4">
           <div className="flex flex-wrap gap-2">
             <Button size="sm" variant="outline" onClick={() => applyPreset(today(), today())}>Hôm nay</Button>
             <Button size="sm" variant="outline" onClick={() => applyPreset(daysAgo(6), today())}>7 ngày</Button>
@@ -146,17 +146,17 @@ export function HistoryPage() {
             <Button size="sm" variant="outline" onClick={() => applyPreset('', '')}>Tất cả ngày</Button>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-            <div>
-              <label className="text-sm font-medium text-brand-700 block mb-1">Từ ngày</label>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5 sm:gap-3">
+            <div className="min-w-0">
+              <label className="text-xs sm:text-sm font-medium text-brand-700 dark:text-brand-300 block mb-1 truncate">Từ ngày</label>
               <input type="date" className={inputClass} value={filters.from} onChange={(e) => handleFilterChange('from', e.target.value)} />
             </div>
-            <div>
-              <label className="text-sm font-medium text-brand-700 block mb-1">Đến ngày</label>
+            <div className="min-w-0">
+              <label className="text-xs sm:text-sm font-medium text-brand-700 dark:text-brand-300 block mb-1 truncate">Đến ngày</label>
               <input type="date" className={inputClass} value={filters.to} onChange={(e) => handleFilterChange('to', e.target.value)} />
             </div>
-            <div>
-              <label className="text-sm font-medium text-brand-700 block mb-1">Bàn</label>
+            <div className="min-w-0">
+              <label className="text-xs sm:text-sm font-medium text-brand-700 dark:text-brand-300 block mb-1 truncate">Bàn</label>
               <select className={inputClass} value={filters.tableId} onChange={(e) => handleFilterChange('tableId', e.target.value)}>
                 <option value="">Tất cả bàn</option>
                 {tables.map(table => (
@@ -164,16 +164,16 @@ export function HistoryPage() {
                 ))}
               </select>
             </div>
-            <div>
-              <label className="text-sm font-medium text-brand-700 block mb-1">Loại bàn</label>
+            <div className="min-w-0">
+              <label className="text-xs sm:text-sm font-medium text-brand-700 dark:text-brand-300 block mb-1 truncate">Loại bàn</label>
               <select className={inputClass} value={filters.tableType} onChange={(e) => handleFilterChange('tableType', e.target.value)}>
                 <option value="">Tất cả loại</option>
                 <option value="DRINK">Bàn nước</option>
                 <option value="BILLIARD">Bàn bi-a</option>
               </select>
             </div>
-            <div>
-              <label className="text-sm font-medium text-brand-700 block mb-1">Nhân viên</label>
+            <div className="min-w-0">
+              <label className="text-xs sm:text-sm font-medium text-brand-700 dark:text-brand-300 block mb-1 truncate">Nhân viên</label>
               <select className={inputClass} value={filters.staffId} onChange={(e) => handleFilterChange('staffId', e.target.value)}>
                 <option value="">Tất cả nhân viên</option>
                 {staffs.map(staff => (
@@ -181,16 +181,16 @@ export function HistoryPage() {
                 ))}
               </select>
             </div>
-            <div>
-              <label className="text-sm font-medium text-brand-700 block mb-1">Trạng thái</label>
+            <div className="min-w-0">
+              <label className="text-xs sm:text-sm font-medium text-brand-700 dark:text-brand-300 block mb-1 truncate">Trạng thái</label>
               <select className={inputClass} value={filters.status} onChange={(e) => handleFilterChange('status', e.target.value)}>
                 <option value="">Tất cả</option>
                 <option value="COMPLETED">Hoàn thành</option>
                 <option value="CANCELLED">Đã hủy</option>
               </select>
             </div>
-            <div>
-              <label className="text-sm font-medium text-brand-700 block mb-1">Thanh toán</label>
+            <div className="min-w-0">
+              <label className="text-xs sm:text-sm font-medium text-brand-700 dark:text-brand-300 block mb-1 truncate">Thanh toán</label>
               <select className={inputClass} value={filters.paymentMethod} onChange={(e) => handleFilterChange('paymentMethod', e.target.value)}>
                 <option value="">Tất cả phương thức</option>
                 <option value="CASH">Tiền mặt</option>
@@ -200,24 +200,24 @@ export function HistoryPage() {
                 <option value="EWALLET">Ví điện tử</option>
               </select>
             </div>
-            <div>
-              <label className="text-sm font-medium text-brand-700 block mb-1">Đơn gọi thêm</label>
+            <div className="min-w-0">
+              <label className="text-xs sm:text-sm font-medium text-brand-700 dark:text-brand-300 block mb-1 truncate">Đơn gọi thêm</label>
               <select className={inputClass} value={filters.hasPreviousOrder} onChange={(e) => handleFilterChange('hasPreviousOrder', e.target.value)}>
                 <option value="">Tất cả</option>
                 <option value="true">Chỉ đơn gọi thêm</option>
                 <option value="false">Không phải gọi thêm</option>
               </select>
             </div>
-            <div>
-              <label className="text-sm font-medium text-brand-700 block mb-1">Từ số tiền</label>
+            <div className="min-w-0">
+              <label className="text-xs sm:text-sm font-medium text-brand-700 dark:text-brand-300 block mb-1 truncate">Từ số tiền</label>
               <input type="number" min="0" className={inputClass} placeholder="0" value={filters.minAmount} onChange={(e) => handleFilterChange('minAmount', e.target.value)} />
             </div>
-            <div>
-              <label className="text-sm font-medium text-brand-700 block mb-1">Đến số tiền</label>
+            <div className="min-w-0">
+              <label className="text-xs sm:text-sm font-medium text-brand-700 dark:text-brand-300 block mb-1 truncate">Đến số tiền</label>
               <input type="number" min="0" className={inputClass} placeholder="Không giới hạn" value={filters.maxAmount} onChange={(e) => handleFilterChange('maxAmount', e.target.value)} />
             </div>
-            <div>
-              <label className="text-sm font-medium text-brand-700 block mb-1">Sắp xếp</label>
+            <div className="min-w-0">
+              <label className="text-xs sm:text-sm font-medium text-brand-700 dark:text-brand-300 block mb-1 truncate">Sắp xếp</label>
               <select className={inputClass} value={filters.sortBy} onChange={(e) => handleFilterChange('sortBy', e.target.value)}>
                 <option value="closedAt">Thời gian đóng</option>
                 <option value="createdAt">Thời gian tạo</option>
@@ -225,8 +225,8 @@ export function HistoryPage() {
                 <option value="id">Mã đơn</option>
               </select>
             </div>
-            <div>
-              <label className="text-sm font-medium text-brand-700 block mb-1">Thứ tự</label>
+            <div className="min-w-0">
+              <label className="text-xs sm:text-sm font-medium text-brand-700 dark:text-brand-300 block mb-1 truncate">Thứ tự</label>
               <select className={inputClass} value={filters.sortDir} onChange={(e) => handleFilterChange('sortDir', e.target.value)}>
                 <option value="DESC">Mới / lớn trước</option>
                 <option value="ASC">Cũ / nhỏ trước</option>

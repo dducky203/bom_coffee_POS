@@ -69,7 +69,7 @@ export function InvoicePrint({
     <div className="hidden print:block w-[80mm] p-2 bg-white text-black text-[12px] font-sans mx-auto h-auto">
       <div className="text-center mb-4">
         <h1 className="text-xl font-bold uppercase tracking-wider mb-1">Bom Coffee</h1>
-        <p className="text-[11px] mb-0.5">Nịnh Thành - Thọ Xuân - Thanh Hóa</p>
+        <p className="text-[11px] mb-0.5">Ninh Thành - Thọ Xuân - Thanh Hóa</p>
         <p className="text-[11px] mb-2">SĐT: 0396.547.525</p>
         <h2 className="text-lg font-bold border-t border-b border-black py-1 my-2">HÓA ĐƠN THANH TOÁN</h2>
       </div>
