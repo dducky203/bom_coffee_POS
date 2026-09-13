@@ -110,11 +110,18 @@
     size: 80mm auto; 
     margin: 0; 
   }
-  body { 
+  html, body { 
+    height: auto !important;
+    overflow: visible !important;
     background-color: white !important;
     color: black !important;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
+  }
+  div, main, header, section, nav, aside {
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
   }
   .print-hidden {
     display: none !important;

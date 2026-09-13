@@ -98,6 +98,20 @@ export function OrderDetailPage() {
   const drinksAmount = drinkAmountOf(order)
   const drinksCount = drinkCountOf(order)
 
+  const handlePrint = (e) => {
+    if (e) {
+      e.preventDefault()
+      e.stopPropagation()
+    }
+    setTimeout(() => {
+      try {
+        window.print()
+      } catch (err) {
+        console.error('Print failed', err)
+      }
+    }, 50)
+  }
+
   return (
     <>
       <div className="space-y-6 max-w-5xl mx-auto print-hidden pb-12">
@@ -131,7 +145,7 @@ export function OrderDetailPage() {
             </div>
           </div>
 
-          <Button onClick={() => window.print()} className="gap-2 rounded-xl shrink-0">
+          <Button onClick={handlePrint} className="gap-2 rounded-xl shrink-0">
             <Printer size={17} />
             <span>Xuất hóa đơn</span>
           </Button>
@@ -354,7 +368,7 @@ export function OrderDetailPage() {
 
                 <Button
                   variant="outline"
-                  onClick={() => window.print()}
+                  onClick={handlePrint}
                   className="gap-2 rounded-xl shrink-0 self-start sm:self-auto"
                 >
                   <Printer size={16} />

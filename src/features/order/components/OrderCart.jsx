@@ -13,6 +13,19 @@ export function OrderCart({
   removeItem, changeQty, error, totalAmount, payTiming, setPayTiming, paymentMethod, setPaymentMethod,
   PAYMENT_METHODS, sendOrder, checkout, numericTableId
 }) {
+  const handlePrint = (e) => {
+    if (e) {
+      e.preventDefault()
+      e.stopPropagation()
+    }
+    setTimeout(() => {
+      try {
+        window.print()
+      } catch (err) {
+        console.error('Print failed', err)
+      }
+    }, 50)
+  }
   return (
     <>
       {isCartOpen && (
@@ -435,7 +448,7 @@ export function OrderCart({
               <Button
                 variant="outline"
                 className="w-full h-11 border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/40 font-bold shadow-sm flex items-center justify-center gap-1.5 text-xs"
-                onClick={() => window.print()}
+                onClick={handlePrint}
               >
                 <Printer size={16} />
                 Xuất hóa đơn
