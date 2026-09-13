@@ -147,13 +147,15 @@ export function HistoryPage() {
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5 sm:gap-3">
-            <div className="min-w-0">
-              <label className="text-xs sm:text-sm font-medium text-brand-700 dark:text-brand-300 block mb-1 truncate">Từ ngày</label>
-              <input type="date" className={inputClass} value={filters.from} onChange={(e) => handleFilterChange('from', e.target.value)} />
-            </div>
-            <div className="min-w-0">
-              <label className="text-xs sm:text-sm font-medium text-brand-700 dark:text-brand-300 block mb-1 truncate">Đến ngày</label>
-              <input type="date" className={inputClass} value={filters.to} onChange={(e) => handleFilterChange('to', e.target.value)} />
+            <div className="col-span-2 sm:col-span-2 md:col-span-2 lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-2.5 min-w-0">
+              <div className="min-w-0">
+                <label className="text-xs sm:text-sm font-medium text-brand-700 dark:text-brand-300 block mb-1 truncate">Từ ngày</label>
+                <input type="date" className={inputClass} value={filters.from} onChange={(e) => handleFilterChange('from', e.target.value)} />
+              </div>
+              <div className="min-w-0">
+                <label className="text-xs sm:text-sm font-medium text-brand-700 dark:text-brand-300 block mb-1 truncate">Đến ngày</label>
+                <input type="date" className={inputClass} value={filters.to} onChange={(e) => handleFilterChange('to', e.target.value)} />
+              </div>
             </div>
             <div className="min-w-0">
               <label className="text-xs sm:text-sm font-medium text-brand-700 dark:text-brand-300 block mb-1 truncate">Bàn</label>
